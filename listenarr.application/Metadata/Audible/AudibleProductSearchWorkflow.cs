@@ -61,7 +61,7 @@ namespace Listenarr.Application.Metadata.Audible
                 language: language,
                 sortBy: "Relevance");
 
-            if (response.Results.Count > 0)
+            if (response.Results.Count > 0 || response.Failed)
             {
                 return ToSearchResponse(response);
             }
@@ -104,7 +104,10 @@ namespace Listenarr.Application.Metadata.Audible
             return new AudibleSearchResponse
             {
                 Results = filtered,
-                TotalResults = filtered.Count
+                TotalResults = filtered.Count,
+                Failed = response.Failed,
+                RateLimited = response.RateLimited,
+                RetryAfter = response.RetryAfter
             };
         }
 
@@ -173,7 +176,7 @@ namespace Listenarr.Application.Metadata.Audible
                 query, title, author, narrator, publisher,
                 page, limit, safeRegion, language, sortBy, returnRawProducts);
 
-            if (result.Results.Count == 0)
+            if (result.Results.Count == 0 && !result.Failed)
             {
                 var hasDiacritics =
                     HasDiacritics(query) || HasDiacritics(title) ||
@@ -217,10 +220,16 @@ namespace Listenarr.Application.Metadata.Audible
             if (!string.IsNullOrWhiteSpace(publisher)) parameters["publisher"] = publisher;
 
             var url = $"{AudibleRequestHelper.BuildApiBaseUrl(safeRegion)}/1.0/catalog/products/?{AudibleRequestHelper.BuildQueryString(parameters)}";
-            using var doc = await _apiClient.GetJsonDocumentAsync(url, safeRegion, includeLocaleHeaders: false, timeoutSeconds: 10);
+            var apiResponse = await _apiClient.GetJsonDocumentResultAsync(url, safeRegion, includeLocaleHeaders: false, timeoutSeconds: 10);
+            using var doc = apiResponse.Document;
             if (doc == null)
             {
-                return new SearchProductsDirectResponse();
+                return new SearchProductsDirectResponse
+                {
+                    Failed = apiResponse.Failed,
+                    RateLimited = apiResponse.RateLimited,
+                    RetryAfter = apiResponse.RetryAfter
+                };
             }
 
             var root = doc.RootElement;
@@ -254,7 +263,10 @@ namespace Listenarr.Application.Metadata.Audible
             return new AudibleSearchResponse
             {
                 Results = response.Results,
-                TotalResults = response.TotalResults
+                TotalResults = response.TotalResults,
+                Failed = response.Failed,
+                RateLimited = response.RateLimited,
+                RetryAfter = response.RetryAfter
             };
         }
 

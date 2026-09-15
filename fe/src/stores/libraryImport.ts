@@ -20,8 +20,33 @@ import { ref, computed } from 'vue'
 import { apiService } from '@/services/api'
 import { signalRService } from '@/services/signalr'
 import { logger } from '@/utils/logger'
-import { buildLibraryImportSearchParams } from '@/utils/libraryImportSearch'
-import type { SearchResult, AudibleBookMetadata, UnmatchedFileItem } from '@/types'
+import { buildLibraryImportSearchParams, looksLikeAsin } from '@/utils/libraryImportSearch'
+import type { LibraryImportSearchStrategy } from '@/utils/libraryImportSearch'
+import type {
+  SearchResult,
+  AudibleBookMetadata,
+  AudiobookSeriesMembership,
+  UnmatchedFileItem,
+} from '@/types'
+
+/** Best score at or above this is auto-selected and ticked. */
+export const AUTO_MATCH_THRESHOLD = 0.75
+
+/** Two candidates closer together than this are too close to call. */
+export const AMBIGUITY_MARGIN = 0.1
+
+/** How many candidates a row keeps so the table can offer them inline. */
+export const MAX_ROW_CANDIDATES = 5
+
+export type LibraryImportMatchState = 'unsearched' | 'matched' | 'needs-review' | 'unmatched'
+
+export type LibraryImportMatchIssue =
+  | 'none'
+  | 'no-results'
+  | 'low-confidence'
+  | 'ambiguous'
+  | 'rate-limited'
+  | 'search-failed'
 
 export interface LibraryImportItem {
   id: string // = fullPath (unique key)
@@ -37,8 +62,13 @@ export interface LibraryImportItem {
   detectedSeries?: string
   format: string
   fileCount: number
+  durationSeconds?: number
   // Match state
   selectedMatch: SearchResult | null
+  matchState: LibraryImportMatchState
+  matchIssue: LibraryImportMatchIssue
+  candidates: SearchResult[]
+  matchedByStrategy?: LibraryImportSearchStrategy
   hasSearched: boolean // true once auto-search was attempted
   isSearching: boolean // currently in-flight
   // Selection
@@ -51,18 +81,92 @@ function extractFolderName(relativePath: string): string {
   return parts[parts.length - 1] ?? relativePath
 }
 
-// From a list of search results, prefer the one whose author best matches detectedAuthor.
-// Falls back to results[0] when no author info is available on either side.
-function pickBestMatch(results: SearchResult[], detectedAuthor?: string): SearchResult | null {
-  if (!results.length) return null
-  if (!detectedAuthor) return results[0] ?? null
-  const needle = detectedAuthor.toLowerCase()
-  const scored = results.map((r) => {
-    const resultAuthor = (r.authors?.[0]?.name ?? '').toLowerCase()
-    const match = resultAuthor && (resultAuthor.includes(needle) || needle.includes(resultAuthor))
-    return { r, match }
-  })
-  return scored.find((s) => s.match)?.r ?? results[0] ?? null
+export interface LibraryImportMatchOutcome {
+  matchState: LibraryImportMatchState
+  matchIssue: LibraryImportMatchIssue
+  selectedMatch: SearchResult | null
+  candidates: SearchResult[]
+  selected: boolean
+}
+
+function scoreOf(result: SearchResult): number {
+  return typeof result.matchScore === 'number' ? result.matchScore : -1
+}
+
+/**
+ * Turn a list of candidates into one of three outcomes. The backend does the scoring; this only
+ * decides whether the best candidate is good enough to tick without a human looking at it.
+ */
+export function classifyMatch(
+  results: SearchResult[],
+  options: { detectedAsin?: string } = {},
+): LibraryImportMatchOutcome {
+  const ranked = [...results].sort((a, b) => scoreOf(b) - scoreOf(a))
+  const candidates = ranked.slice(0, MAX_ROW_CANDIDATES)
+  const best = ranked[0] ?? null
+
+  if (!best) {
+    return {
+      matchState: 'unmatched',
+      matchIssue: 'no-results',
+      selectedMatch: null,
+      candidates: [],
+      selected: false,
+    }
+  }
+
+  const detectedAsin = options.detectedAsin?.trim()
+  if (detectedAsin) {
+    // An ASIN is an exact identifier. Anything that came back under a different one is not the
+    // book that was asked for, whatever else it looks like.
+    const exact = ranked.find((r) => r.asin?.toLowerCase() === detectedAsin.toLowerCase())
+    if (exact) {
+      return {
+        matchState: 'matched',
+        matchIssue: 'none',
+        selectedMatch: exact,
+        candidates,
+        selected: true,
+      }
+    }
+    return {
+      matchState: 'needs-review',
+      matchIssue: 'low-confidence',
+      selectedMatch: best,
+      candidates,
+      selected: false,
+    }
+  }
+
+  const bestScore = scoreOf(best)
+  const runnerUp = ranked[1]
+  const tooClose = !!runnerUp && bestScore - scoreOf(runnerUp) < AMBIGUITY_MARGIN
+
+  if (bestScore >= AUTO_MATCH_THRESHOLD && !tooClose) {
+    return {
+      matchState: 'matched',
+      matchIssue: 'none',
+      selectedMatch: best,
+      candidates,
+      selected: true,
+    }
+  }
+
+  return {
+    matchState: 'needs-review',
+    matchIssue: tooClose && bestScore >= AUTO_MATCH_THRESHOLD ? 'ambiguous' : 'low-confidence',
+    selectedMatch: best,
+    candidates,
+    selected: false,
+  }
+}
+
+// The backend binds SearchResult.Isbn as List<string>. Audible sends a bare string.
+function normalizeIsbn(isbn: unknown): string[] | undefined {
+  if (isbn == null) return undefined
+  if (Array.isArray(isbn)) return isbn.filter((v): v is string => typeof v === 'string' && !!v)
+  if (typeof isbn === 'string') return isbn.trim() ? [isbn.trim()] : []
+  return undefined
 }
 
 function normalizeGenres(genres: unknown): string[] | undefined {
@@ -87,11 +191,33 @@ function unmatchedToImportItem(item: UnmatchedFileItem): LibraryImportItem {
     detectedSeries: item.series,
     format: item.format,
     fileCount: item.fileCount,
+    durationSeconds: parseDurationSeconds(item.duration),
     selectedMatch: null,
+    matchState: 'unsearched',
+    matchIssue: 'none',
+    candidates: [],
     hasSearched: false,
     isSearching: false,
     selected: false,
   }
+}
+
+// Plan 02 puts a real duration on the scan row. Until then `duration` is a display string, so
+// read what we can and leave the hint off when it is not a number of seconds.
+function parseDurationSeconds(duration?: string | number): number | undefined {
+  if (typeof duration === 'number') return duration > 0 ? duration : undefined
+  if (!duration) return undefined
+  const trimmed = duration.trim()
+  if (/^\d+(\.\d+)?$/.test(trimmed)) {
+    const seconds = Math.round(Number(trimmed))
+    return seconds > 0 ? seconds : undefined
+  }
+  const parts = trimmed.split(':').map((part) => Number(part))
+  if (parts.length >= 2 && parts.length <= 3 && parts.every((part) => Number.isFinite(part))) {
+    const seconds = parts.reduce((total, part) => total * 60 + part, 0)
+    return seconds > 0 ? Math.round(seconds) : undefined
+  }
+  return undefined
 }
 
 function matchToMetadata(result: SearchResult): AudibleBookMetadata {
@@ -102,12 +228,25 @@ function matchToMetadata(result: SearchResult): AudibleBookMetadata {
 
   // series may come back as AudibleSeries[] from the search endpoint
   const seriesRaw = result.series as unknown
-  const seriesItem = Array.isArray(seriesRaw)
-    ? (seriesRaw as Array<{ name?: string; asin?: string; position?: string }>)[0]
-    : null
+  const seriesEntries = Array.isArray(seriesRaw)
+    ? (seriesRaw as Array<{ name?: string; asin?: string; position?: string }>)
+    : []
+  const seriesItem = seriesEntries[0] ?? null
   const series = seriesItem?.name ?? (typeof seriesRaw === 'string' ? seriesRaw : undefined)
   const seriesNumber = seriesItem?.position ?? result.seriesNumber
   const seriesAsin = seriesItem?.asin ?? result.seriesAsin
+
+  // Keep every series the book belongs to, not just the first. The backend accepts and applies
+  // seriesMemberships; flattening to one entry silently drops the rest.
+  const seriesMemberships: AudiobookSeriesMembership[] = seriesEntries
+    .filter((entry) => !!entry?.name)
+    .map((entry, index) => ({
+      seriesName: entry.name!,
+      seriesNumber: entry.position,
+      seriesAsin: entry.asin,
+      isPrimary: index === 0,
+      sortOrder: index,
+    }))
 
   return {
     title: result.title ?? '',
@@ -117,10 +256,13 @@ function matchToMetadata(result: SearchResult): AudibleBookMetadata {
     series,
     seriesNumber,
     seriesAsin,
+    ...(seriesMemberships.length > 0 ? { seriesMemberships } : {}),
     description: result.description,
     publisher: result.publisher,
     language: result.language,
-    runtime: result.runtime ?? (result.lengthMinutes ? result.lengthMinutes * 60 : undefined),
+    // Runtime is minutes on the backend (Audiobook.Runtime, MetadataConverters), and
+    // lengthMinutes is already minutes. Do not convert.
+    runtime: result.runtime ?? result.lengthMinutes,
     imageUrl: result.imageUrl,
     // SearchResult.genres comes as objects {asin, name, type} from Audible;
     // AudibleBookMetadata.genres expects string[] (genre names only)
@@ -143,6 +285,8 @@ export const useLibraryImportStore = defineStore('libraryImport', () => {
   const monitor = ref<'none' | 'all'>('all')
   const metadataFetchCount = ref(0)
   const importErrors = ref<string[]>([])
+  const queuePausedReason = ref<string | null>(null)
+  const retryStrategy = ref<LibraryImportSearchStrategy>('title-author')
 
   // ─── Computed ────────────────────────────────────────────────────────────────
 
@@ -150,7 +294,18 @@ export const useLibraryImportStore = defineStore('libraryImport', () => {
   const selectedCount = computed(() => itemList.value.filter((i) => i.selected).length)
   const hasUnprocessedItems = computed(() => itemList.value.some((i) => !i.hasSearched))
   const processedCount = computed(() => itemList.value.filter((i) => i.hasSearched).length)
-  const matchedCount = computed(() => itemList.value.filter((i) => i.selectedMatch).length)
+  const matchedCount = computed(() => itemList.value.filter((i) => i.matchState === 'matched').length)
+  const needsReviewCount = computed(
+    () => itemList.value.filter((i) => i.matchState === 'needs-review').length,
+  )
+  const unmatchedCount = computed(
+    () => itemList.value.filter((i) => i.matchState === 'unmatched').length,
+  )
+  const retryableCount = computed(
+    () =>
+      itemList.value.filter((i) => i.matchState === 'unmatched' || i.matchState === 'needs-review')
+        .length,
+  )
 
   // ─── Scan ─────────────────────────────────────────────────────────────────
 
@@ -168,18 +323,14 @@ export const useLibraryImportStore = defineStore('libraryImport', () => {
         if (existing) {
           newItems[item.fullPath] = {
             ...unmatchedToImportItem(item),
-            selectedMatch: existing.selectedMatch,
-            hasSearched: existing.hasSearched,
+            ...restoreMatchState(existing),
             isSearching: false,
-            selected: existing.selected,
           }
         } else if (p) {
           newItems[item.fullPath] = {
             ...unmatchedToImportItem(item),
-            selectedMatch: p.selectedMatch,
-            hasSearched: p.hasSearched,
+            ...restoreMatchState(p),
             isSearching: false,
-            selected: p.selected,
           }
         } else {
           newItems[item.fullPath] = unmatchedToImportItem(item)
@@ -278,6 +429,44 @@ export const useLibraryImportStore = defineStore('libraryImport', () => {
     }
   }
 
+  // Entries written before match states existed only carry selectedMatch/hasSearched, so infer
+  // a state rather than leaving every restored row unsearched.
+  function restoreMatchState(entry: {
+    selectedMatch: SearchResult | null
+    matchState?: LibraryImportMatchState
+    matchIssue?: LibraryImportMatchIssue
+    candidates?: SearchResult[]
+    matchedByStrategy?: LibraryImportSearchStrategy
+    hasSearched: boolean
+    selected: boolean
+  }): Pick<
+    LibraryImportItem,
+    | 'selectedMatch'
+    | 'matchState'
+    | 'matchIssue'
+    | 'candidates'
+    | 'matchedByStrategy'
+    | 'hasSearched'
+    | 'selected'
+  > {
+    const inferred: LibraryImportMatchState = entry.matchState
+      ? entry.matchState
+      : !entry.hasSearched
+        ? 'unsearched'
+        : entry.selectedMatch
+          ? 'needs-review'
+          : 'unmatched'
+    return {
+      selectedMatch: entry.selectedMatch,
+      matchState: inferred,
+      matchIssue: entry.matchIssue ?? 'none',
+      candidates: entry.candidates ?? [],
+      matchedByStrategy: entry.matchedByStrategy,
+      hasSearched: entry.hasSearched,
+      selected: inferred === 'matched' ? entry.selected : false,
+    }
+  }
+
   function _populateFromItems(scanItems: UnmatchedFileItem[]) {
     const newItems: Record<string, LibraryImportItem> = {}
     for (const item of scanItems) {
@@ -286,9 +475,7 @@ export const useLibraryImportStore = defineStore('libraryImport', () => {
       newItems[item.fullPath] = existing
         ? {
             ...fresh,
-            selectedMatch: existing.selectedMatch,
-            hasSearched: existing.hasSearched,
-            selected: existing.selected,
+            ...restoreMatchState(existing),
           }
         : fresh
     }
@@ -299,6 +486,10 @@ export const useLibraryImportStore = defineStore('libraryImport', () => {
 
   type PersistedEntry = {
     selectedMatch: SearchResult | null
+    matchState?: LibraryImportMatchState
+    matchIssue?: LibraryImportMatchIssue
+    candidates?: SearchResult[]
+    matchedByStrategy?: LibraryImportSearchStrategy
     hasSearched: boolean
     selected: boolean
   }
@@ -313,6 +504,10 @@ export const useLibraryImportStore = defineStore('libraryImport', () => {
     for (const [path, item] of Object.entries(items.value)) {
       state[path] = {
         selectedMatch: item.selectedMatch,
+        matchState: item.matchState,
+        matchIssue: item.matchIssue,
+        candidates: item.candidates,
+        matchedByStrategy: item.matchedByStrategy,
         hasSearched: item.hasSearched,
         selected: item.selected,
       }
@@ -339,15 +534,34 @@ export const useLibraryImportStore = defineStore('libraryImport', () => {
   function startProcessing() {
     const unsearched = itemList.value.filter((i) => !i.hasSearched).map((i) => i.id)
     if (unsearched.length === 0) return
+    queuePausedReason.value = null
+    retryStrategy.value = 'title-author'
     lookupQueue.value = unsearched
     isProcessing.value = true
     metadataFetchCount.value = 0
     processNext()
   }
 
+  /**
+   * Re-run every doubtful and unmatched row with a different way of building the query. Rows that
+   * already matched are left alone.
+   */
+  function retryUnmatched(strategy: LibraryImportSearchStrategy) {
+    const retryable = itemList.value
+      .filter((i) => i.matchState === 'unmatched' || i.matchState === 'needs-review')
+      .map((i) => i.id)
+    if (retryable.length === 0) return
+    queuePausedReason.value = null
+    retryStrategy.value = strategy
+    lookupQueue.value = retryable
+    isProcessing.value = true
+    processNext()
+  }
+
   function stopProcessing() {
     lookupQueue.value = []
     isProcessing.value = false
+    queuePausedReason.value = null
     // Clear any in-flight isSearching flags
     for (const id of Object.keys(items.value)) {
       const entry = items.value[id]
@@ -367,32 +581,51 @@ export const useLibraryImportStore = defineStore('libraryImport', () => {
 
       items.value = { ...items.value, [id]: { ...item, isSearching: true } }
 
+      const strategy = retryStrategy.value
       try {
-        const searchParams = buildLibraryImportSearchParams(item, 5)
-        const byAsin = !!searchParams.asin
+        const searchParams = buildLibraryImportSearchParams(item, strategy)
         const results = await apiService.advancedSearch(searchParams)
         metadataFetchCount.value++
-        // ASIN results are authoritative — take the first result directly without author comparison
-        const first = byAsin ? (results[0] ?? null) : pickBestMatch(results, item.detectedAuthor)
+        const outcome = classifyMatch(results, { detectedAsin: searchParams.asin })
         const current = items.value[id]!
         items.value = {
           ...items.value,
           [id]: {
             ...current,
+            ...outcome,
+            matchedByStrategy: outcome.matchState === 'matched' ? strategy : current.matchedByStrategy,
             isSearching: false,
             hasSearched: true,
-            selectedMatch: first,
-            selected: first !== null,
           },
         }
         _persistMatches()
-      } catch {
+      } catch (e) {
+        // A rate limit or a transport failure says nothing about the book. Leave the row
+        // unsearched so "Start matching" picks it up again, and stop the queue so the next
+        // hundred rows do not burn through the same limit.
+        const status = (e as { status?: number })?.status
+        const retryAfter = (e as { retryAfter?: number })?.retryAfter
+        const rateLimited = status === 429
         const current = items.value[id]
-        if (current)
+        if (current) {
           items.value = {
             ...items.value,
-            [id]: { ...current, isSearching: false, hasSearched: true },
+            [id]: {
+              ...current,
+              isSearching: false,
+              hasSearched: false,
+              matchState: 'unsearched',
+              matchIssue: rateLimited ? 'rate-limited' : 'search-failed',
+            },
           }
+        }
+        lookupQueue.value = [id, ...lookupQueue.value]
+        isProcessing.value = false
+        queuePausedReason.value = rateLimited
+          ? `Audible rate limited the search${retryAfter ? `, retry in ${retryAfter}s` : ''}. Matching paused.`
+          : `The search request failed (${(e as Error)?.message ?? 'unknown error'}). Matching paused.`
+        logger.debug('[libraryImport] Search paused:', queuePausedReason.value)
+        return
       }
     }
     isProcessing.value = false
@@ -406,31 +639,55 @@ export const useLibraryImportStore = defineStore('libraryImport', () => {
 
     items.value[id] = { ...item, isSearching: true }
     try {
-      const isAsin = /^[A-Z0-9]{10}$/i.test(query.trim())
+      const isAsin = looksLikeAsin(query)
       const results = await apiService.advancedSearch(
-        isAsin ? { asin: query.trim(), cap: 5 } : { title: query, cap: 5 },
+        isAsin
+          ? { asin: query.trim() }
+          : { title: query, ...(item.durationSeconds ? { durationSeconds: item.durationSeconds } : {}) },
       )
-      items.value[id] = { ...items.value[id], isSearching: false, hasSearched: true }
+      const current = items.value[id]!
+      items.value[id] = {
+        ...current,
+        isSearching: false,
+        hasSearched: true,
+        candidates: [...results].sort((a, b) => (b.matchScore ?? -1) - (a.matchScore ?? -1)).slice(0, MAX_ROW_CANDIDATES),
+        matchState: current.matchState === 'unsearched' && results.length === 0 ? 'unmatched' : current.matchState,
+      }
+      _persistMatches()
       return results
     } catch {
-      items.value[id] = { ...items.value[id], isSearching: false }
+      items.value[id] = { ...items.value[id]!, isSearching: false }
       return []
     }
   }
 
   // ─── Match management ─────────────────────────────────────────────────────
 
+  // A human picking from the list is the strongest signal there is.
   function selectMatch(id: string, match: SearchResult) {
     const item = items.value[id]
     if (!item) return
-    items.value[id] = { ...item, selectedMatch: match, hasSearched: true, selected: true }
+    items.value[id] = {
+      ...item,
+      selectedMatch: match,
+      matchState: 'matched',
+      matchIssue: 'none',
+      hasSearched: true,
+      selected: true,
+    }
     _persistMatches()
   }
 
   function clearMatch(id: string) {
     const item = items.value[id]
     if (!item) return
-    items.value[id] = { ...item, selectedMatch: null, selected: false }
+    items.value[id] = {
+      ...item,
+      selectedMatch: null,
+      matchState: item.candidates.length > 0 ? 'needs-review' : 'unmatched',
+      matchIssue: item.candidates.length > 0 ? 'low-confidence' : 'no-results',
+      selected: false,
+    }
     _persistMatches()
   }
 
@@ -439,16 +696,25 @@ export const useLibraryImportStore = defineStore('libraryImport', () => {
   function toggleSelect(id: string) {
     const item = items.value[id]
     if (!item) return
-    items.value[id] = { ...item, selected: !item.selected }
+    // Ticking a doubtful row by hand is a decision, so record it as one.
+    const nextSelected = !item.selected
+    items.value[id] = {
+      ...item,
+      selected: nextSelected,
+      matchState: nextSelected && item.selectedMatch ? 'matched' : item.matchState,
+      matchIssue: nextSelected && item.selectedMatch ? 'none' : item.matchIssue,
+    }
     _persistMatches()
   }
 
+  // "Select all" only ticks rows the scorer was confident about. A doubtful row has to be looked
+  // at, which is the whole point of the confidence gate.
   function toggleSelectAll() {
-    const allSelected = itemList.value.filter((i) => i.selectedMatch).every((i) => i.selected)
-    for (const item of itemList.value) {
-      if (item.selectedMatch) {
-        items.value[item.id] = { ...item, selected: !allSelected }
-      }
+    const matched = itemList.value.filter((i) => i.matchState === 'matched')
+    if (matched.length === 0) return
+    const allSelected = matched.every((i) => i.selected)
+    for (const item of matched) {
+      items.value[item.id] = { ...item, selected: !allSelected }
     }
     _persistMatches()
   }
@@ -486,7 +752,10 @@ export const useLibraryImportStore = defineStore('libraryImport', () => {
   async function importSelected(
     rootFolderPath: string,
   ): Promise<{ imported: number; errors: string[]; warnings: string[] }> {
-    const toImport = itemList.value.filter((i) => i.selected && i.selectedMatch)
+    // Never import a row nobody confirmed: an unreviewed wrong match merges two books.
+    const toImport = itemList.value.filter(
+      (i) => i.selected && i.selectedMatch && i.matchState === 'matched',
+    )
     importErrors.value = []
     const warnings: string[] = []
     let imported = 0
@@ -503,6 +772,9 @@ export const useLibraryImportStore = defineStore('libraryImport', () => {
             series: Array.isArray(match.series)
               ? ((match.series as Array<{ name?: string }>)[0]?.name ?? undefined)
               : match.series,
+            // Audible emits isbn as a string; the backend binds List<string> with no lenient
+            // converter, so a result carrying one made the add 400.
+            isbn: normalizeIsbn(match.isbn),
           }
           const { audiobook } = await apiService.addToLibrary(metadata, {
             monitored: monitor.value != 'none',
@@ -590,16 +862,22 @@ export const useLibraryImportStore = defineStore('libraryImport', () => {
     monitor,
     metadataFetchCount,
     importErrors,
+    queuePausedReason,
+    retryStrategy,
     // Computed
     itemList,
     selectedCount,
     hasUnprocessedItems,
     processedCount,
     matchedCount,
+    needsReviewCount,
+    unmatchedCount,
+    retryableCount,
     // Actions
     initFromRootFolder,
     triggerScan,
     startProcessing,
+    retryUnmatched,
     stopProcessing,
     processNext,
     searchItem,

@@ -61,6 +61,9 @@ describe('LibraryImportSearchModal', () => {
           format: 'M4B',
           fileCount: 1,
           selectedMatch: null,
+          matchState: 'unsearched',
+          matchIssue: 'none',
+          candidates: [],
           hasSearched: false,
           isSearching: false,
           selected: false,
@@ -77,4 +80,70 @@ describe('LibraryImportSearchModal', () => {
     )
     expect(wrapper.find('img').attributes('src')).toBe('https://example.com/protected.jpg')
   })
+
+  it('starts from the detected title and asks for more than five results', async () => {
+    const advancedSearch = vi.mocked(apiService.advancedSearch)
+    const wrapper = mount(LibraryImportSearchModal, { props: { item: item() } })
+
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    await wrapper.vm.$nextTick()
+
+    // The old modal deliberately skipped detectedTitle, so it searched a different string than
+    // the automatic pass did, and it capped results at five.
+    expect(advancedSearch).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Alchemised', author: 'SenLinYu' }),
+    )
+    const params = advancedSearch.mock.calls[0]?.[0] as Record<string, unknown>
+    expect(params.cap).toBeUndefined()
+    expect(params.pagination).toEqual({ limit: 20 })
+  })
+
+  it('re-searches with the folder-name strategy when its chip is clicked', async () => {
+    const advancedSearch = vi.mocked(apiService.advancedSearch)
+    const wrapper = mount(LibraryImportSearchModal, { props: { item: item() } })
+
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    advancedSearch.mockClear()
+
+    await wrapper.get('[data-strategy="folder"]').trigger('click')
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(advancedSearch).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Alchemised Folder', author: undefined }),
+    )
+  })
+
+  it('says so when the search request fails instead of stopping silently', async () => {
+    vi.mocked(apiService.advancedSearch).mockRejectedValue(
+      Object.assign(new Error('Rate limited'), { status: 429 }),
+    )
+    const wrapper = mount(LibraryImportSearchModal, { props: { item: item() } })
+
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.get('[data-testid="search-error"]').text()).toContain('Rate limited')
+  })
+
+  function item() {
+    return {
+      id: 'C:\\incoming\\Alchemised.m4b',
+      fullPath: 'C:\\incoming\\Alchemised.m4b',
+      sourceFiles: ['C:\\incoming\\Alchemised.m4b'],
+      folderPath: 'C:\\incoming',
+      relativePath: 'Alchemised Folder',
+      folderName: 'Alchemised Folder',
+      detectedTitle: 'Alchemised',
+      detectedAuthor: 'SenLinYu',
+      format: 'M4B',
+      fileCount: 1,
+      selectedMatch: null,
+      matchState: 'unsearched' as const,
+      matchIssue: 'none' as const,
+      candidates: [],
+      hasSearched: false,
+      isSearching: false,
+      selected: false,
+    }
+  }
 })

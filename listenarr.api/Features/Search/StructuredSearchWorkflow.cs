@@ -131,9 +131,12 @@ namespace Listenarr.Api.Features.Search
             }
 
             var query = ComposeAdvancedQuery(req);
-            var candidateLimit = req.Cap.HasValue ? Math.Clamp(req.Cap.Value, 5, 2000) : 200;
+            // Cap bounds how many results come back. It used to reach the Audible author page
+            // collector as a page size, which turned a 5-result request into a 10-per-page walk
+            // of the author's whole catalogue, so it no longer floors below a usable page.
+            var candidateLimit = req.Cap.HasValue ? Math.Clamp(req.Cap.Value, 50, 2000) : 200;
             var returnLimit = req.Pagination != null && req.Pagination.Limit > 0 ? Math.Clamp(req.Pagination.Limit, 1, 1000) : 50;
-            var results = await _searchService.IntelligentSearchAsync(query, candidateLimit, returnLimit, region: region, language: language, ct: httpContext.RequestAborted);
+            var results = await _searchService.IntelligentSearchAsync(query, candidateLimit, returnLimit, region: region, language: language, ct: httpContext.RequestAborted, durationSeconds: req.DurationSeconds);
 
             await _responseMapper.NormalizeMetadataResultImagesAsync(results, httpContext, "result");
             results = ApplySeriesFilter(req, results);

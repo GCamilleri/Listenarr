@@ -1,0 +1,1092 @@
+{
+  "product_filters": [],
+  "products": [
+    {
+      "asin": "B008CQW70U",
+      "asset_details": [],
+      "authors": [
+        {
+          "asin": "B001IGFHW6",
+          "name": "Brandon Sanderson"
+        }
+      ],
+      "available_codecs": [
+        {
+          "enhanced_codec": "LC_64_22050_stereo",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "aax_22_64"
+        },
+        {
+          "enhanced_codec": "format4",
+          "format": "Format4",
+          "is_kindle_enhanced": false,
+          "name": "format4"
+        },
+        {
+          "enhanced_codec": "LC_32_22050_stereo",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "aax_22_32"
+        },
+        {
+          "enhanced_codec": "mp42264",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "mp4_22_64"
+        },
+        {
+          "enhanced_codec": "mp42232",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "mp4_22_32"
+        },
+        {
+          "enhanced_codec": "aax",
+          "format": "Enhanced",
+          "is_kindle_enhanced": false,
+          "name": "aax"
+        }
+      ],
+      "category_ladders": [
+        {
+          "ladder": [
+            {
+              "id": "18574426011",
+              "name": "Literature & Fiction"
+            },
+            {
+              "id": "18574449011",
+              "name": "Classics"
+            }
+          ],
+          "root": "Genres"
+        },
+        {
+          "ladder": [
+            {
+              "id": "18580606011",
+              "name": "Science Fiction & Fantasy"
+            },
+            {
+              "id": "18580607011",
+              "name": "Fantasy"
+            },
+            {
+              "id": "18580608011",
+              "name": "Action & Adventure"
+            }
+          ],
+          "root": "Genres"
+        },
+        {
+          "ladder": [
+            {
+              "id": "18580606011",
+              "name": "Science Fiction & Fantasy"
+            },
+            {
+              "id": "18580607011",
+              "name": "Fantasy"
+            },
+            {
+              "id": "18580615011",
+              "name": "Epic"
+            }
+          ],
+          "root": "Genres"
+        },
+        {
+          "ladder": [
+            {
+              "id": "18580606011",
+              "name": "Science Fiction & Fantasy"
+            },
+            {
+              "id": "18580628011",
+              "name": "Science Fiction"
+            }
+          ],
+          "root": "Genres"
+        }
+      ],
+      "content_delivery_type": "MultiPartBook",
+      "content_type": "Product",
+      "format_type": "unabridged",
+      "has_children": true,
+      "is_adult_product": false,
+      "is_listenable": true,
+      "is_purchasability_suppressed": false,
+      "is_vvab": false,
+      "issue_date": "2012-07-01",
+      "language": "english",
+      "merchandising_summary": "The award winning and critically acclaimed first novel from Brandon Sanderson is a brilliantly written epic fantasy Elantris was built on magic and it thrived. But then the magic began to fade and Elantris began to rot. Now its shattered citizens face domination by a powerful Imperium motivated...",
+      "narrators": [
+        {
+          "name": "Jack Garrett"
+        }
+      ],
+      "product_images": {
+        "500": "https://m.media-amazon.com/images/I/61BmE88dnAL._SL500_.jpg"
+      },
+      "publication_datetime": "2012-07-01T00:00:00Z",
+      "publication_name": "Elantris",
+      "publisher_name": "W. F. Howes Ltd",
+      "publisher_summary": "The award winning and critically acclaimed first novel from Brandon Sanderson is a brilliantly written epic fantasy <br /><br />Elantris was built on magic and it thrived. But then the magic began to fade and Elantris began to rot. Now its shattered citizens face domination by a powerful Imperium motivated by dogged religious views. Can a young Princess unite the people of Elantris, and lead a rebellion against the imperial zealots? Brandon Sanderson's debut fantasy showed his skill as a storyteller and an imaginer of baroque magical systems to be fully developed from the start.",
+      "release_date": "2012-07-01",
+      "runtime_length_min": 1722,
+      "series": [
+        {
+          "asin": "B0DMXTJ8WH",
+          "sequence": "",
+          "title": "The Cosmere",
+          "url": "/pd/The-Cosmere-Audiobook/B0DMXTJ8WH"
+        },
+        {
+          "asin": "B08KXL8CWM",
+          "sequence": "1",
+          "title": "Elantris",
+          "url": "/pd/Elantris-Series-Audiobook/B08KXL8CWM"
+        }
+      ],
+      "sku": "BK_HOWE_001316",
+      "sku_lite": "BK_HOWE_001316",
+      "social_media_images": {
+        "facebook": "https://m.media-amazon.com/images/I/61BmE88dnAL._SL10_UR1600,800_CR200,50,1200,630_CLa%7C1200,630%7C61BmE88dnAL.jpg%7C0,0,1200,630+82,82,465,465_PJAdblSocialShare-Gradientoverlay-largeasin-0to70,TopLeft,0,0_PJAdblSocialShare-AudibleLogo-Large,TopLeft,600,270_OU01_ZBLISTENING%20ON,617,216,52,500,AudibleSansMd,30,255,255,255.jpg",
+        "ig_bg": "https://m.media-amazon.com/images/I/61BmE88dnAL._SL200_BL80_UR1080,2160.jpg",
+        "ig_static_with_bg": "https://m.media-amazon.com/images/I/61BmE88dnAL._SL200_BL80_UR1080,2160_CLa%7C1080,2160%7C61BmE88dnAL.jpg%7C0,0,1080,2160+288,614,500,500_PJAdblSocialShare-Gradientoverlay-Radial,TopLeft,0,0_PJAdblSocialShare-AudibleLogo-Small,TopLeft,290,461_ZBLISTENING%20ON,290,410,52,500,AudibleSansMd,34,255,255,255_ZBElantris,290,1183,52,500,AudibleSansSm,32,255,255,255_ZBBrandon%20Sanderson,290,1247,52,500,AudibleSansRg,28,255,255,255.jpg",
+        "ig_sticker": "https://m.media-amazon.com/images/I/71UyRin7-TL._CLa%7C614,913%7C61BmE88dnAL.jpg%7C0,0,614,913+70,79,471,473_FMpng_PJAudible-logo-dk,BottomLeft,70,-100_ZAElantris,70,560,65,500,AudibleSansSm,42,54,54,54_ZAby%20Brandon%20Sanderson,70,640,52,517,AudibleSansRg,32,0,0,0.png",
+        "twitter": "https://m.media-amazon.com/images/I/61BmE88dnAL._SL10_UR1600,800_CR200,50,1024,512_CLa%7C1024,512%7C61BmE88dnAL.jpg%7C0,0,1024,512+67,67,376,376_PJAdblSocialShare-Gradientoverlay-twitter-largeasin-0to60,TopLeft,0,0_PJAdblSocialShare-AudibleLogo-Medium,TopLeft,490,223_OU01_ZBLISTENING%20ON,483,152,55,450,AudibleSansMd,32,255,255,255.jpg"
+      },
+      "title": "Elantris"
+    },
+    {
+      "asin": "B0DQF3Q4XX",
+      "asset_details": [],
+      "authors": [
+        {
+          "name": "Brandon Sanderson"
+        }
+      ],
+      "available_codecs": [
+        {
+          "enhanced_codec": "LC_32_22050_stereo",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "aax_22_32"
+        },
+        {
+          "enhanced_codec": "LC_64_22050_stereo",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "aax_22_64"
+        },
+        {
+          "enhanced_codec": "LC_128_44100_stereo",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "aax_44_128"
+        },
+        {
+          "enhanced_codec": "LC_64_44100_stereo",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "aax_44_64"
+        },
+        {
+          "enhanced_codec": "aax",
+          "format": "Enhanced",
+          "is_kindle_enhanced": false,
+          "name": "aax"
+        }
+      ],
+      "category_ladders": [
+        {
+          "ladder": [
+            {
+              "id": "18580606011",
+              "name": "Science Fiction & Fantasy"
+            },
+            {
+              "id": "18580607011",
+              "name": "Fantasy"
+            },
+            {
+              "id": "18580608011",
+              "name": "Action & Adventure"
+            }
+          ],
+          "root": "Genres"
+        },
+        {
+          "ladder": [
+            {
+              "id": "18580606011",
+              "name": "Science Fiction & Fantasy"
+            },
+            {
+              "id": "18580607011",
+              "name": "Fantasy"
+            },
+            {
+              "id": "18580614011",
+              "name": "Dramatizations"
+            }
+          ],
+          "root": "Genres"
+        },
+        {
+          "ladder": [
+            {
+              "id": "18580606011",
+              "name": "Science Fiction & Fantasy"
+            },
+            {
+              "id": "18580607011",
+              "name": "Fantasy"
+            },
+            {
+              "id": "18580615011",
+              "name": "Epic"
+            }
+          ],
+          "root": "Genres"
+        }
+      ],
+      "content_delivery_type": "SinglePartBook",
+      "content_type": "Product",
+      "format_type": "unabridged",
+      "has_children": false,
+      "is_adult_product": false,
+      "is_listenable": true,
+      "is_purchasability_suppressed": false,
+      "is_vvab": false,
+      "issue_date": "2025-03-10",
+      "language": "english",
+      "merchandising_summary": "From #1 New York Times bestselling author Brandon Sanderson―creator of The Stormlight Archive, the Mistborn Saga, and countless bestselling works of science fiction and fantasy―comes this standalone novel showing a rare glimpse of a future Cosmere universe. Running. Putting distance between...",
+      "narrators": [
+        {
+          "name": "Full Cast"
+        },
+        {
+          "name": "Nick J. Russo"
+        },
+        {
+          "name": "Torian Brackett"
+        },
+        {
+          "name": "Wyn Delano"
+        },
+        {
+          "name": "Taylor Coan"
+        },
+        {
+          "name": "Elena Anderson"
+        },
+        {
+          "name": "Stephanie Németh-Parker"
+        },
+        {
+          "name": "Daniel Llaca"
+        },
+        {
+          "name": "David Cui Cui"
+        },
+        {
+          "name": "Yasmin Tuazon"
+        },
+        {
+          "name": "Nanette Savard"
+        },
+        {
+          "name": "Alexander Amado"
+        }
+      ],
+      "product_images": {
+        "500": "https://m.media-amazon.com/images/I/514Qn2C0yQL._SL500_.jpg"
+      },
+      "publication_datetime": "2025-03-10T07:00:00Z",
+      "publication_name": "Secret Projects",
+      "publisher_name": "GraphicAudio",
+      "publisher_summary": "<p>From #1 New York Times bestselling author Brandon Sanderson―creator of The Stormlight Archive, the Mistborn Saga, and countless bestselling works of science fiction and fantasy―comes this standalone novel showing a rare glimpse of a future Cosmere universe.</p><p>Running. Putting distance between himself and the relentless Night Brigade has been Nomad’s strategy for years. Staying one or two steps ahead of his pursuers by skipping through the Cosmere from one world to the next.</p><p>But now, his powers too depleted to escape, Nomad finds himself trapped on Canticle, a planet that will kill anyone who doesn’t keep moving. Fleeing the fires of a sunrise that melts the very stones, he is instantly caught up in the struggle between a heartless tyrant and the brave rebels who defy him.</p><p>Failure means a quick death, incinerated by the sun… or a lifetime as a mindless slave. Tormented by the consequences of his past, Nomad must fight not only for his survival―but also for his very soul.</p><p>Adapted from the novel and produced with a full cast of actors, immersive sound effects and cinematic music!</p><p>Performed by Nick J. Russo, Torian Brackett, Wyn Delano, Taylor Coan, Elena Anderson, Stephanie Németh-Parker, Daniel Llaca, David Cui Cui, Yasmin Tuazon, Nanette Savard, Alexander Amado, Natalie Van Sistine, Chris Davenport, Christopher Walker, Shanta Parasuraman, Scott McCormick, Gabriel Michael, Eva Wilhelm, Colleen Delany, Kenneth Charles, Laura C. Harris, Bradley Foster Smith, Crystal Lee, and Richard Rohan.</p>",
+      "release_date": "2025-03-10",
+      "runtime_length_min": 610,
+      "series": [
+        {
+          "asin": "B0D1BMZVXV",
+          "sequence": "4",
+          "title": "Secret Projects",
+          "url": "/pd/Secret-Projects-Audiobook/B0D1BMZVXV"
+        }
+      ],
+      "sku": "BK_GRPH_005141",
+      "sku_lite": "BK_GRPH_005141",
+      "social_media_images": {
+        "facebook": "https://m.media-amazon.com/images/I/514Qn2C0yQL._SL10_UR1600,800_CR200,50,1200,630_CLa%7C1200,630%7C514Qn2C0yQL.jpg%7C0,0,1200,630+82,82,465,465_PJAdblSocialShare-Gradientoverlay-largeasin-0to70,TopLeft,0,0_PJAdblSocialShare-AudibleLogo-Large,TopLeft,600,270_OU01_ZBLISTENING%20ON,617,216,52,500,AudibleSansMd,30,255,255,255.jpg",
+        "ig_bg": "https://m.media-amazon.com/images/I/514Qn2C0yQL._SL200_BL80_UR1080,2160.jpg",
+        "ig_static_with_bg": "https://m.media-amazon.com/images/I/514Qn2C0yQL._SL200_BL80_UR1080,2160_CLa%7C1080,2160%7C514Qn2C0yQL.jpg%7C0,0,1080,2160+288,614,500,500_PJAdblSocialShare-Gradientoverlay-Radial,TopLeft,0,0_PJAdblSocialShare-AudibleLogo-Small,TopLeft,290,461_ZBLISTENING%20ON,290,410,52,500,AudibleSansMd,34,255,255,255_ZBThe%20Sunlit%20Man%3A%20A%20Cosme...,290,1183,52,500,AudibleSansSm,32,255,255,255_ZBBrandon%20Sanderson,290,1247,52,500,AudibleSansRg,28,255,255,255.jpg",
+        "ig_sticker": "https://m.media-amazon.com/images/I/71UyRin7-TL._CLa%7C614,913%7C514Qn2C0yQL.jpg%7C0,0,614,913+70,79,471,473_FMpng_PJAudible-logo-dk,BottomLeft,70,-100_ZAThe%20Sunlit%20Man%3A...,70,560,65,500,AudibleSansSm,42,54,54,54_ZAby%20Brandon%20Sanderson,70,640,52,517,AudibleSansRg,32,0,0,0.png",
+        "twitter": "https://m.media-amazon.com/images/I/514Qn2C0yQL._SL10_UR1600,800_CR200,50,1024,512_CLa%7C1024,512%7C514Qn2C0yQL.jpg%7C0,0,1024,512+67,67,376,376_PJAdblSocialShare-Gradientoverlay-twitter-largeasin-0to60,TopLeft,0,0_PJAdblSocialShare-AudibleLogo-Medium,TopLeft,490,223_OU01_ZBLISTENING%20ON,483,152,55,450,AudibleSansMd,32,255,255,255.jpg"
+      },
+      "subtitle": "Secret Projects 4",
+      "thesaurus_subject_keywords": [
+        "dramatizations"
+      ],
+      "title": "The Sunlit Man: A Cosmere Novel [Dramatized Adaptation]"
+    },
+    {
+      "asin": "1980062897",
+      "asset_details": [],
+      "authors": [
+        {
+          "name": "Brandon Sanderson"
+        },
+        {
+          "name": "Mary Robinette Kowal"
+        }
+      ],
+      "available_codecs": [
+        {
+          "enhanced_codec": "LC_32_22050_stereo",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "aax_22_32"
+        },
+        {
+          "enhanced_codec": "LC_64_22050_stereo",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "aax_22_64"
+        },
+        {
+          "enhanced_codec": "LC_64_44100_stereo",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "aax_44_64"
+        },
+        {
+          "enhanced_codec": "format4",
+          "format": "Format4",
+          "is_kindle_enhanced": false,
+          "name": "format4"
+        },
+        {
+          "enhanced_codec": "LC_128_44100_stereo",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "aax_44_128"
+        },
+        {
+          "enhanced_codec": "mp42264",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "mp4_22_64"
+        },
+        {
+          "enhanced_codec": "mp444128",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "mp4_44_128"
+        },
+        {
+          "enhanced_codec": "mp44464",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "mp4_44_64"
+        },
+        {
+          "enhanced_codec": "mp42232",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "mp4_22_32"
+        },
+        {
+          "enhanced_codec": "aax",
+          "format": "Enhanced",
+          "is_kindle_enhanced": false,
+          "name": "aax"
+        }
+      ],
+      "category_ladders": [
+        {
+          "ladder": [
+            {
+              "id": "18580606011",
+              "name": "Science Fiction & Fantasy"
+            },
+            {
+              "id": "18580628011",
+              "name": "Science Fiction"
+            },
+            {
+              "id": "18580629011",
+              "name": "Adventure"
+            }
+          ],
+          "root": "Genres"
+        }
+      ],
+      "content_delivery_type": "SinglePartBook",
+      "content_type": "Product",
+      "format_type": "unabridged",
+      "has_children": false,
+      "is_adult_product": false,
+      "is_listenable": true,
+      "is_purchasability_suppressed": false,
+      "is_vvab": false,
+      "issue_date": "2020-09-14",
+      "language": "english",
+      "merchandising_summary": "Hugo Award-winning authors Brandon Sanderson and Mary Robinette Kowal team up in this exclusive audio-first production of The Original, a sci-fi thriller set in a world where one woman fights to know her true identity and survive the forces that threaten her very existence. In the near future...",
+      "narrators": [
+        {
+          "name": "Julia Whelan"
+        }
+      ],
+      "product_images": {
+        "500": "https://m.media-amazon.com/images/I/41nT3S6ly0L._SL500_.jpg"
+      },
+      "publication_datetime": "2020-09-14T07:00:00Z",
+      "publisher_name": "Recorded Books",
+      "publisher_summary": "<p><b>Hugo Award-winning authors Brandon Sanderson and Mary Robinette Kowal team up in this exclusive audio-first production of </b><b><i>The Original</i></b><b>, a sci-fi thriller set in a world where one woman fights to know her true identity and survive the forces that threaten her very existence. </b></p> <p>In the near future, humans choose life - for a price. Injectable nanite technology is the lifeblood that flows through every individual wishing to experience the world through the lens of their own theme. While death from mortal wounds is still possible, life is made easier in a socially liberated society where automation and income equality allow passion pursuits to flourish over traditional work. Renewal stations are provided to every law-abiding citizen for weekly check-ins, which issue life-sustaining repairs in exchange for personal privacy. But what becomes of those who check out, of those who dare to resist immortality and risk being edited under the gaze of an identity-extracting government surveillance system? </p> <p>When Holly Winseed wakes up in a hospital room, her memory compromised and a new identity imposed on her, a team of government agents wastes no time stating their objective. With intent to infiltrate and defeat the terrorist group ICON, the agents tell Holly that she is now a Provisional Replica and has one week to hunt down and kill her Original for the murder of her husband, Jonathan. If she succeeds, she’ll assume her Original’s place in society. If she fails, her life will end. Holly’s progress is monitored by an assigned contact that feeds her information as she confronts the blank, robotic world around her, discovering that others view life through the theme of their own choosing. </p> <p>With her newly implanted combat and deduction skills, Holly fends off both attacks by terrorists and doubts about her own trustworthiness as clues lead her to her Original - and to the truth about Jonathan. In the end, one body remains and one walks away. Although questions persist, one thing is certain: Life will never be the same. </p>",
+      "release_date": "2020-09-14",
+      "runtime_length_min": 205,
+      "sku": "BK_RECO_014637",
+      "sku_lite": "BK_RECO_014637",
+      "social_media_images": {
+        "facebook": "https://m.media-amazon.com/images/I/41nT3S6ly0L._SL10_UR1600,800_CR200,50,1200,630_CLa%7C1200,630%7C41nT3S6ly0L.jpg%7C0,0,1200,630+82,82,465,465_PJAdblSocialShare-Gradientoverlay-largeasin-0to70,TopLeft,0,0_PJAdblSocialShare-AudibleLogo-Large,TopLeft,600,270_OU01_ZBLISTENING%20ON,617,216,52,500,AudibleSansMd,30,255,255,255.jpg",
+        "ig_bg": "https://m.media-amazon.com/images/I/41nT3S6ly0L._SL200_BL80_UR1080,2160.jpg",
+        "ig_static_with_bg": "https://m.media-amazon.com/images/I/41nT3S6ly0L._SL200_BL80_UR1080,2160_CLa%7C1080,2160%7C41nT3S6ly0L.jpg%7C0,0,1080,2160+288,614,500,500_PJAdblSocialShare-Gradientoverlay-Radial,TopLeft,0,0_PJAdblSocialShare-AudibleLogo-Small,TopLeft,290,461_ZBLISTENING%20ON,290,410,52,500,AudibleSansMd,34,255,255,255_ZBThe%20Original,290,1183,52,500,AudibleSansSm,32,255,255,255_ZBBrandon%20Sanderson%252C%20Mary%20Ro...,290,1247,52,500,AudibleSansRg,28,255,255,255.jpg",
+        "ig_sticker": "https://m.media-amazon.com/images/I/71UyRin7-TL._CLa%7C614,913%7C41nT3S6ly0L.jpg%7C0,0,614,913+70,79,471,473_FMpng_PJAudible-logo-dk,BottomLeft,70,-100_ZAThe%20Original,70,560,65,500,AudibleSansSm,42,54,54,54_ZAby%20Brandon%20Sanderson%252C...,70,640,52,517,AudibleSansRg,32,0,0,0.png",
+        "twitter": "https://m.media-amazon.com/images/I/41nT3S6ly0L._SL10_UR1600,800_CR200,50,1024,512_CLa%7C1024,512%7C41nT3S6ly0L.jpg%7C0,0,1024,512+67,67,376,376_PJAdblSocialShare-Gradientoverlay-twitter-largeasin-0to60,TopLeft,0,0_PJAdblSocialShare-AudibleLogo-Medium,TopLeft,490,223_OU01_ZBLISTENING%20ON,483,152,55,450,AudibleSansMd,32,255,255,255.jpg"
+      },
+      "thesaurus_subject_keywords": [
+        "la_confidential"
+      ],
+      "title": "The Original"
+    },
+    {
+      "asin": "B0F566K233",
+      "asset_details": [],
+      "authors": [
+        {
+          "asin": "B001IGFHW6",
+          "name": "Brandon Sanderson"
+        },
+        {
+          "asin": "B007OEEFJW",
+          "name": "Janci Patterson"
+        },
+        {
+          "name": "Manuel Viciano Delibano - translator"
+        }
+      ],
+      "available_codecs": [
+        {
+          "enhanced_codec": "LC_128_44100_stereo",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "aax_44_128"
+        },
+        {
+          "enhanced_codec": "LC_32_22050_stereo",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "aax_22_32"
+        },
+        {
+          "enhanced_codec": "LC_64_22050_stereo",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "aax_22_64"
+        },
+        {
+          "enhanced_codec": "LC_64_44100_stereo",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "aax_44_64"
+        },
+        {
+          "enhanced_codec": "aax",
+          "format": "Enhanced",
+          "is_kindle_enhanced": false,
+          "name": "aax"
+        }
+      ],
+      "category_ladders": [
+        {
+          "ladder": [
+            {
+              "id": "18580715011",
+              "name": "Teen & Young Adult"
+            },
+            {
+              "id": "18581048011",
+              "name": "Science Fiction & Fantasy"
+            },
+            {
+              "id": "18581062011",
+              "name": "Science Fiction"
+            },
+            {
+              "id": "18581064011",
+              "name": "Aliens"
+            }
+          ],
+          "root": "Genres"
+        }
+      ],
+      "content_delivery_type": "MultiPartBook",
+      "content_type": "Product",
+      "format_type": "unabridged",
+      "has_children": true,
+      "is_adult_product": false,
+      "is_listenable": true,
+      "is_purchasability_suppressed": false,
+      "is_vvab": false,
+      "issue_date": "2025-05-08",
+      "language": "spanish",
+      "merchandising_summary": "<p>La colección de novelas cortas de la saga de fantasía estelar «Escuadrón». Este volumen incluye ilustraciones exclusivas de los personajes y las escenas eliminadas con comentarios de Brandon Sanderson.</p> <p></p>",
+      "narrators": [
+        {
+          "name": "Sheila Blanco"
+        },
+        {
+          "name": "Íñigo Montero"
+        },
+        {
+          "name": "Paula Iwasaki"
+        }
+      ],
+      "product_images": {
+        "500": "https://m.media-amazon.com/images/I/51YkImJNXJL._SL500_.jpg"
+      },
+      "publication_datetime": "2025-05-08T07:00:00Z",
+      "publication_name": "Escuadrón",
+      "publisher_name": "Penguin Random House Audio",
+      "publisher_summary": "<p><b>La colección de novelas cortas de la saga de fantasía estelar «Escuadrón». Este volumen incluye ilustraciones exclusivas de los personajes y las escenas eliminadas con comentarios de Brandon Sanderson.</b></p> <p><b>Incluye </b><b><i>La defensa del Elíseo</i></b><b>.</b></p> <p>Viajamos con el Escuadrón Cielo a Detritus, el último refugio de la humanidad frente al gobierno hostil de la Supremacía Galáctica. En <i>Escuadrón</i>, Spensa Nitghshade se convirtió en piloto de caza estelar y pasó a formar parte del Escuadrón Cielo de la Fuerza de Defensa Desafiante con el objetivo de combatir la amenaza de la Supremacía. En <i>Estelar</i>, se hizo pasar por la alienígena Alanik para infiltrarse en una estación espacial de la Supremacía y robar sus hipermotores. Y en <i>Citónica</i> viajó a la extraña dimensión conocida como la ninguna-parte para descubrir los secretos de los zapadores -unos seres capaces de destruir planetas enteros- y liberar sus propios poderes citónicos.</p> <p>Mientras Spensa está atrapada en la ninguna-parte, sus compañeros de escuadrón, FM y Jorgen permanecen en Detritus con nuevas órdenes: averiguar cómo utilizar los hipermotores para que la humanidad pueda huir del planeta y buscar aliados entre las otras especies oprimidas por la Supremacía. Primeror reciben una llamada de emergencia de le ministre Cuna y otres diones desde el puesto de avanzada abandonado de Alcance Solar, pero el pueblo de Alanik en el planeta ReAlba y los kitsen del planeta Orilla Perpetua necesitarán también la ayuda del Escuadrón Cielo en sus desesperadas batallas.</p> <p><b>Please note: This audiobook is in Spanish.</b></p>",
+      "release_date": "2025-05-08",
+      "runtime_length_min": 1306,
+      "series": [
+        {
+          "asin": "B08C73TW7B",
+          "sequence": "",
+          "title": "Escuadrón",
+          "url": "/pd/Escuadron-Spanish-Edition-Audiobook/B08C73TW7B"
+        }
+      ],
+      "sku": "BK_RHSP_006888",
+      "sku_lite": "BK_RHSP_006888",
+      "social_media_images": {
+        "facebook": "https://m.media-amazon.com/images/I/51YkImJNXJL._SL10_UR1600,800_CR200,50,1200,630_CLa%7C1200,630%7C51YkImJNXJL.jpg%7C0,0,1200,630+82,82,465,465_PJAdblSocialShare-Gradientoverlay-largeasin-0to70,TopLeft,0,0_PJAdblSocialShare-AudibleLogo-Large,TopLeft,600,270_OU01_ZBLISTENING%20ON,617,216,52,500,AudibleSansMd,30,255,255,255.jpg",
+        "ig_bg": "https://m.media-amazon.com/images/I/51YkImJNXJL._SL200_BL80_UR1080,2160.jpg",
+        "ig_static_with_bg": "https://m.media-amazon.com/images/I/51YkImJNXJL._SL200_BL80_UR1080,2160_CLa%7C1080,2160%7C51YkImJNXJL.jpg%7C0,0,1080,2160+288,614,500,500_PJAdblSocialShare-Gradientoverlay-Radial,TopLeft,0,0_PJAdblSocialShare-AudibleLogo-Small,TopLeft,290,461_ZBLISTENING%20ON,290,410,52,500,AudibleSansMd,34,255,255,255_ZBEscuadr%C3%B3n%20Cielo%3A%20La%20col...,290,1183,52,500,AudibleSansSm,32,255,255,255_ZBBrandon%20Sanderson%252C%20Janci%20P...,290,1247,52,500,AudibleSansRg,28,255,255,255.jpg",
+        "ig_sticker": "https://m.media-amazon.com/images/I/71UyRin7-TL._CLa%7C614,913%7C51YkImJNXJL.jpg%7C0,0,614,913+70,79,471,473_FMpng_PJAudible-logo-dk,BottomLeft,70,-100_ZAEscuadr%C3%B3n%20Cielo...,70,560,65,500,AudibleSansSm,42,54,54,54_ZAby%20Brandon%20Sanderson%252C...,70,640,52,517,AudibleSansRg,32,0,0,0.png",
+        "twitter": "https://m.media-amazon.com/images/I/51YkImJNXJL._SL10_UR1600,800_CR200,50,1024,512_CLa%7C1024,512%7C51YkImJNXJL.jpg%7C0,0,1024,512+67,67,376,376_PJAdblSocialShare-Gradientoverlay-twitter-largeasin-0to60,TopLeft,0,0_PJAdblSocialShare-AudibleLogo-Medium,TopLeft,490,223_OU01_ZBLISTENING%20ON,483,152,55,450,AudibleSansMd,32,255,255,255.jpg"
+      },
+      "thesaurus_subject_keywords": [
+        "literature-and-fiction"
+      ],
+      "title": "Escuadrón Cielo: La colección (Escuadrón)",
+      "voice_description": "Castilian Spanish"
+    },
+    {
+      "asin": "8418037156",
+      "asset_details": [],
+      "authors": [
+        {
+          "asin": "B001IGFHW6",
+          "name": "Brandon Sanderson"
+        },
+        {
+          "name": "Pedro Jorge Romero - translator"
+        }
+      ],
+      "available_codecs": [
+        {
+          "enhanced_codec": "LC_64_44100_stereo",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "aax_44_64"
+        },
+        {
+          "enhanced_codec": "LC_32_22050_stereo",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "aax_22_32"
+        },
+        {
+          "enhanced_codec": "LC_128_44100_stereo",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "aax_44_128"
+        },
+        {
+          "enhanced_codec": "LC_64_22050_stereo",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "aax_22_64"
+        },
+        {
+          "enhanced_codec": "aax",
+          "format": "Enhanced",
+          "is_kindle_enhanced": false,
+          "name": "aax"
+        }
+      ],
+      "category_ladders": [
+        {
+          "ladder": [
+            {
+              "id": "18580606011",
+              "name": "Science Fiction & Fantasy"
+            },
+            {
+              "id": "18580607011",
+              "name": "Fantasy"
+            },
+            {
+              "id": "18580615011",
+              "name": "Epic"
+            }
+          ],
+          "root": "Genres"
+        },
+        {
+          "ladder": [
+            {
+              "id": "18580606011",
+              "name": "Science Fiction & Fantasy"
+            },
+            {
+              "id": "18580628011",
+              "name": "Science Fiction"
+            },
+            {
+              "id": "18580635011",
+              "name": "Dystopian"
+            }
+          ],
+          "root": "Genres"
+        },
+        {
+          "ladder": [
+            {
+              "id": "18580606011",
+              "name": "Science Fiction & Fantasy"
+            },
+            {
+              "id": "18580628011",
+              "name": "Science Fiction"
+            },
+            {
+              "id": "18580643011",
+              "name": "Post-Apocalyptic"
+            }
+          ],
+          "root": "Genres"
+        }
+      ],
+      "content_delivery_type": "MultiPartBook",
+      "content_type": "Product",
+      "format_type": "unabridged",
+      "has_children": true,
+      "is_adult_product": false,
+      "is_listenable": true,
+      "is_purchasability_suppressed": false,
+      "is_vvab": false,
+      "issue_date": "2021-07-08",
+      "language": "spanish",
+      "merchandising_summary": "<p>La ciudad de Chicago Nova es libre. Le dijeron a David que era imposible, que ni siquiera los Reckoners habían sido capaces de matar a un Gran Épico. Sin embargo, Steelheart -invencible, inmortal, inamovible- ha muerto....</p>",
+      "narrators": [
+        {
+          "name": "Íñigo Montero"
+        }
+      ],
+      "product_images": {
+        "500": "https://m.media-amazon.com/images/I/51+1-zbGiZL._SL500_.jpg"
+      },
+      "publication_datetime": "2021-07-08T07:00:00Z",
+      "publication_name": "Reckoners (Spanish Edition)",
+      "publisher_name": "Penguin Random House Audio",
+      "publisher_summary": "<p><b><i>Firefight</i></b><b> es el segundo volumen de la elogiada «Trilogía de los Reckoners» de Brandon Sanderson, el autor de fantasía épica que más lectores está ganado en todo el mundo y que ya se ha convertido en el futuro heredero del trono de todo un género.</b></p> <p><b>La presente edición de </b><b><i>Firefight</i></b><b> incluye el relato «Mitosis», cuya lectura se sitúa entre los libros uno y dos de la trilogía.</b></p> <p>La ciudad de Chicago Nova es libre.</p> <p>Le dijeron a David que era imposible, que ni siquiera los Reckoners habían sido capaces de matar a un Gran Épico. Sin embargo, Steelheart -invencible, inmortal, inamovible- ha muerto. Y David fue el responsable de su fin. Acabar con Steelheart debería haber completado la vida de David. Pero en realidad, solo le sirvió para ser consciente de todas las preguntas para las que no tiene respuesta. Y en Chicago Nova nadie puede contestarlas.</p> <p>Pese a todo, en Babilonia Restaurada, el lugar antes conocido como Manhattan, quizá pueda encontrar las respuestas. Es unan urbe inundada y triste, gobernada por la Gran Épica Regalia, pero David está seguro de que por allí pasa el camino que le llevará a lo que busca. Es arriesgado entrar en una ciudad bajo el yugo de una despótica Gran Épica, pero para David la apuesta vale la pena. Porque la muerte de Steelheart solo logró dejarle un enorme vacío donde antes residía su sed de venganza: en el corazón. Había logrado llenar ese vacío con Firefight, una Épica desaparecida. Y ahora se embarcará en una empresa más peligrosa y siniestra que la rebelión contra Steelheart.</p> <p><b>Partirá en busca de Firefight y de las respuestas que necesita.</b></p> <p><b>Reseña</b>:</p> <p>«Otra victoria de Sanderson... Simplemente, un escritor brillante.»<br /> Patrick Rothfuss</p> <p><b>Please note: This audiobook is in Spanish.</b></p>",
+      "release_date": "2021-07-08",
+      "runtime_length_min": 780,
+      "series": [
+        {
+          "asin": "B08WC32MWP",
+          "sequence": "2",
+          "title": "Reckoners (Spanish Edition)",
+          "url": "/pd/Trilogia-de-los-Reckoners-The-Reckoners-Audiobook/B08WC32MWP"
+        }
+      ],
+      "sku": "BK_RHSP_002578",
+      "sku_lite": "BK_RHSP_002578",
+      "social_media_images": {
+        "facebook": "https://m.media-amazon.com/images/I/51+1-zbGiZL._SL10_UR1600,800_CR200,50,1200,630_CLa%7C1200,630%7C51+1-zbGiZL.jpg%7C0,0,1200,630+82,82,465,465_PJAdblSocialShare-Gradientoverlay-largeasin-0to70,TopLeft,0,0_PJAdblSocialShare-AudibleLogo-Large,TopLeft,600,270_OU01_ZBLISTENING%20ON,617,216,52,500,AudibleSansMd,30,255,255,255.jpg",
+        "ig_bg": "https://m.media-amazon.com/images/I/51+1-zbGiZL._SL200_BL80_UR1080,2160.jpg",
+        "ig_static_with_bg": "https://m.media-amazon.com/images/I/51+1-zbGiZL._SL200_BL80_UR1080,2160_CLa%7C1080,2160%7C51+1-zbGiZL.jpg%7C0,0,1080,2160+288,614,500,500_PJAdblSocialShare-Gradientoverlay-Radial,TopLeft,0,0_PJAdblSocialShare-AudibleLogo-Small,TopLeft,290,461_ZBLISTENING%20ON,290,410,52,500,AudibleSansMd,34,255,255,255_ZBFirefight%20%28Reckoners%202%29,290,1183,52,500,AudibleSansSm,32,255,255,255_ZBBrandon%20Sanderson%252C%20Pedro%20J...,290,1247,52,500,AudibleSansRg,28,255,255,255.jpg",
+        "ig_sticker": "https://m.media-amazon.com/images/I/71UyRin7-TL._CLa%7C614,913%7C51+1-zbGiZL.jpg%7C0,0,614,913+70,79,471,473_FMpng_PJAudible-logo-dk,BottomLeft,70,-100_ZAFirefight%20%28Reck...,70,560,65,500,AudibleSansSm,42,54,54,54_ZAby%20Brandon%20Sanderson%252C...,70,640,52,517,AudibleSansRg,32,0,0,0.png",
+        "twitter": "https://m.media-amazon.com/images/I/51+1-zbGiZL._SL10_UR1600,800_CR200,50,1024,512_CLa%7C1024,512%7C51+1-zbGiZL.jpg%7C0,0,1024,512+67,67,376,376_PJAdblSocialShare-Gradientoverlay-twitter-largeasin-0to60,TopLeft,0,0_PJAdblSocialShare-AudibleLogo-Medium,TopLeft,490,223_OU01_ZBLISTENING%20ON,483,152,55,450,AudibleSansMd,32,255,255,255.jpg"
+      },
+      "subtitle": "Trilogía de los Reckoners 2 [Reckoners Trilogy, Book 2]",
+      "thesaurus_subject_keywords": [
+        "literature-and-fiction"
+      ],
+      "title": "Firefight (Reckoners 2)",
+      "voice_description": "Castilian Spanish"
+    },
+    {
+      "asin": "B004SOK2SE",
+      "asset_details": [],
+      "authors": [
+        {
+          "asin": "B001IGFHW6",
+          "name": "Brandon Sanderson"
+        }
+      ],
+      "available_codecs": [
+        {
+          "enhanced_codec": "LC_128_44100_stereo",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "aax_44_128"
+        },
+        {
+          "enhanced_codec": "LC_64_22050_stereo",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "aax_22_64"
+        },
+        {
+          "enhanced_codec": "LC_32_22050_stereo",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "aax_22_32"
+        },
+        {
+          "enhanced_codec": "LC_64_44100_stereo",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "aax_44_64"
+        },
+        {
+          "enhanced_codec": "aax",
+          "format": "Enhanced",
+          "is_kindle_enhanced": false,
+          "name": "aax"
+        }
+      ],
+      "category_ladders": [
+        {
+          "ladder": [
+            {
+              "id": "18580606011",
+              "name": "Science Fiction & Fantasy"
+            },
+            {
+              "id": "18580607011",
+              "name": "Fantasy"
+            },
+            {
+              "id": "18580615011",
+              "name": "Epic"
+            }
+          ],
+          "root": "Genres"
+        },
+        {
+          "ladder": [
+            {
+              "id": "18580606011",
+              "name": "Science Fiction & Fantasy"
+            },
+            {
+              "id": "18580607011",
+              "name": "Fantasy"
+            },
+            {
+              "id": "18580618011",
+              "name": "Historical"
+            }
+          ],
+          "root": "Genres"
+        }
+      ],
+      "content_delivery_type": "MultiPartBook",
+      "content_type": "Product",
+      "format_type": "unabridged",
+      "has_children": true,
+      "is_adult_product": false,
+      "is_listenable": true,
+      "is_purchasability_suppressed": false,
+      "is_vvab": false,
+      "issue_date": "2011-03-18",
+      "language": "english",
+      "merchandising_summary": "THE INTERNATIONAL PHENOMENON BEHIND THE COSMERE **** What if the Dark Lord won? A thousand years ago evil came to the land and has ruled with an iron hand ever since. The sun shines fitfully under clouds of ash that float down endlessly from the constant eruption of volcanoes. A dark lord rules...",
+      "narrators": [
+        {
+          "name": "Michael Kramer"
+        }
+      ],
+      "product_images": {
+        "500": "https://m.media-amazon.com/images/I/514AZpCQ4ML._SL500_.jpg"
+      },
+      "publication_datetime": "2011-03-18T00:00:00Z",
+      "publication_name": "The Mistborn Saga",
+      "publisher_name": "Gollancz",
+      "publisher_summary": "<b> THE INTERNATIONAL PHENOMENON BEHIND THE COSMERE </b><br /><br /> ****<br /> <br /><b> What if the Dark Lord won?</b><br /><br /> A thousand years ago evil came to the land and has ruled with an iron hand ever since. The sun shines fitfully under clouds of ash that float down endlessly from the constant eruption of volcanoes. A dark lord rules through the aristocratic families and ordinary folk are condemned to lives in servitude, sold as goods, labouring in the ash fields.<br /><br /> But now a troublemaker has arrived and there is rumour of revolt. A revolt that depends on a criminal no-one can trust and a young girl who must master Allomancy - the magic that lies in all metals.<br /><br /> ****<br /><br /> <b>FANTASY DOESN'T GET BETTER THAN SANDERSON:</b><br /><br /> 'Highly recommend to anyone hungry for a good read'<br /> <b>ROBIN HOBB</b><br /><br /> 'Epic in every sense'<br /> <b><i>GUARDIAN</i></b><br /><br /> 'Sanderson is the most immersive fantasy writer I've ever encountered'<br /> <b>BEN AARONOVITCH</b><br /><br /> 'All the explosive action any adventure fan could want'<br /> <b><i>LOCUS</i></b>",
+      "release_date": "2011-03-18",
+      "runtime_length_min": 1499,
+      "series": [
+        {
+          "asin": "B006K1P698",
+          "sequence": "1",
+          "title": "The Mistborn Saga",
+          "url": "/pd/The-Mistborn-Saga-Audiobook/B006K1P698"
+        },
+        {
+          "asin": "B0DMXTJ8WH",
+          "sequence": "",
+          "title": "The Cosmere",
+          "url": "/pd/The-Cosmere-Audiobook/B0DMXTJ8WH"
+        }
+      ],
+      "sku": "BK_ORIO_000391",
+      "sku_lite": "BK_ORIO_000391",
+      "social_media_images": {
+        "facebook": "https://m.media-amazon.com/images/I/514AZpCQ4ML._SL10_UR1600,800_CR200,50,1200,630_CLa%7C1200,630%7C514AZpCQ4ML.jpg%7C0,0,1200,630+82,82,465,465_PJAdblSocialShare-Gradientoverlay-largeasin-0to70,TopLeft,0,0_PJAdblSocialShare-AudibleLogo-Large,TopLeft,600,270_OU01_ZBLISTENING%20ON,617,216,52,500,AudibleSansMd,30,255,255,255.jpg",
+        "ig_bg": "https://m.media-amazon.com/images/I/514AZpCQ4ML._SL200_BL80_UR1080,2160.jpg",
+        "ig_static_with_bg": "https://m.media-amazon.com/images/I/514AZpCQ4ML._SL200_BL80_UR1080,2160_CLa%7C1080,2160%7C514AZpCQ4ML.jpg%7C0,0,1080,2160+288,614,500,500_PJAdblSocialShare-Gradientoverlay-Radial,TopLeft,0,0_PJAdblSocialShare-AudibleLogo-Small,TopLeft,290,461_ZBLISTENING%20ON,290,410,52,500,AudibleSansMd,34,255,255,255_ZBMistborn,290,1183,52,500,AudibleSansSm,32,255,255,255_ZBBrandon%20Sanderson,290,1247,52,500,AudibleSansRg,28,255,255,255.jpg",
+        "ig_sticker": "https://m.media-amazon.com/images/I/71UyRin7-TL._CLa%7C614,913%7C514AZpCQ4ML.jpg%7C0,0,614,913+70,79,471,473_FMpng_PJAudible-logo-dk,BottomLeft,70,-100_ZAMistborn,70,560,65,500,AudibleSansSm,42,54,54,54_ZAby%20Brandon%20Sanderson,70,640,52,517,AudibleSansRg,32,0,0,0.png",
+        "twitter": "https://m.media-amazon.com/images/I/514AZpCQ4ML._SL10_UR1600,800_CR200,50,1024,512_CLa%7C1024,512%7C514AZpCQ4ML.jpg%7C0,0,1024,512+67,67,376,376_PJAdblSocialShare-Gradientoverlay-twitter-largeasin-0to60,TopLeft,0,0_PJAdblSocialShare-AudibleLogo-Medium,TopLeft,490,223_OU01_ZBLISTENING%20ON,483,152,55,450,AudibleSansMd,32,255,255,255.jpg"
+      },
+      "subtitle": "Mistborn, Book 1",
+      "title": "Mistborn"
+    },
+    {
+      "asin": "B0BN294NC3",
+      "asset_details": [],
+      "authors": [
+        {
+          "asin": "B001IGFHW6",
+          "name": "Brandon Sanderson"
+        }
+      ],
+      "available_codecs": [
+        {
+          "enhanced_codec": "LC_64_44100_stereo",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "aax_44_64"
+        },
+        {
+          "enhanced_codec": "LC_128_44100_stereo",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "aax_44_128"
+        },
+        {
+          "enhanced_codec": "mp444128",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "mp4_44_128"
+        },
+        {
+          "enhanced_codec": "mp44464",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "mp4_44_64"
+        },
+        {
+          "enhanced_codec": "aax",
+          "format": "Enhanced",
+          "is_kindle_enhanced": false,
+          "name": "aax"
+        }
+      ],
+      "category_ladders": [
+        {
+          "ladder": [
+            {
+              "id": "18574426011",
+              "name": "Literature & Fiction"
+            },
+            {
+              "id": "18574456011",
+              "name": "Genre Fiction"
+            },
+            {
+              "id": "18574468011",
+              "name": "Literary Fiction"
+            }
+          ],
+          "root": "Genres"
+        },
+        {
+          "ladder": [
+            {
+              "id": "18580606011",
+              "name": "Science Fiction & Fantasy"
+            },
+            {
+              "id": "18580607011",
+              "name": "Fantasy"
+            },
+            {
+              "id": "18580615011",
+              "name": "Epic"
+            }
+          ],
+          "root": "Genres"
+        }
+      ],
+      "content_delivery_type": "MultiPartBook",
+      "content_type": "Product",
+      "format_type": "unabridged",
+      "has_children": true,
+      "is_adult_product": false,
+      "is_listenable": true,
+      "is_purchasability_suppressed": false,
+      "is_vvab": false,
+      "issue_date": "2022-11-23",
+      "language": "french",
+      "merchandising_summary": "<p>Qui sera le Héros des Siècles ? Pour mettre fin à la tyrannie, Vin a tué le Seigneur Maître. Mais en essayant de fermer le Puits de...</p>",
+      "narrators": [
+        {
+          "name": "Steve Driesen"
+        }
+      ],
+      "product_images": {
+        "500": "https://m.media-amazon.com/images/I/517+n0S19-L._SL500_.jpg"
+      },
+      "publication_datetime": "2022-11-23T01:00:00Z",
+      "publication_name": "Fils des brumes",
+      "publisher_name": "Audiolib",
+      "publisher_summary": "<p>Qui sera le Héros des Siècles ?</p> <p>Pour mettre fin à la tyrannie, Vin a tué le Seigneur Maître. Mais en essayant de fermer le Puits de l'Ascension, elle a laissé s'échapper une des formes maléfiques de l'Insondable.</p> <p>Depuis, les Inquisiteurs et les brumes font toujours plus de victimes, tandis que les cendres qui tombent du ciel menacent d'affamer les hommes et d'ensevelir le pays. Vin et Elend tentent de sauver ce qui peut encore l'être. Pour cela, ils doivent à tout prix découvrir les derniers secrets du Seigneur Maître : l'ultime cachette d'atium, le plus puissant métal des Fils-des-Brumes... et l'identité du Héros des Siècles.</p> <p>Pour découvrir plus de contenu relatif à l'univers de la saga <i>Fils-des-Brumes</i>, vous pouvez vous rendre sur le site de Brandon Sanderson.</p>",
+      "release_date": "2022-11-23",
+      "runtime_length_min": 1806,
+      "series": [
+        {
+          "asin": "B0CSKQJ2M8",
+          "sequence": "3",
+          "title": "Fils des brumes",
+          "url": "/pd/Fils-des-brumes-Audiobook/B0CSKQJ2M8"
+        }
+      ],
+      "sku": "BK_HTTE_000699",
+      "sku_lite": "BK_HTTE_000699",
+      "social_media_images": {
+        "facebook": "https://m.media-amazon.com/images/I/517+n0S19-L._SL10_UR1600,800_CR200,50,1200,630_CLa%7C1200,630%7C517+n0S19-L.jpg%7C0,0,1200,630+82,82,465,465_PJAdblSocialShare-Gradientoverlay-largeasin-0to70,TopLeft,0,0_PJAdblSocialShare-AudibleLogo-Large,TopLeft,600,270_OU01_ZBLISTENING%20ON,617,216,52,500,AudibleSansMd,30,255,255,255.jpg",
+        "ig_bg": "https://m.media-amazon.com/images/I/517+n0S19-L._SL200_BL80_UR1080,2160.jpg",
+        "ig_static_with_bg": "https://m.media-amazon.com/images/I/517+n0S19-L._SL200_BL80_UR1080,2160_CLa%7C1080,2160%7C517+n0S19-L.jpg%7C0,0,1080,2160+288,614,500,500_PJAdblSocialShare-Gradientoverlay-Radial,TopLeft,0,0_PJAdblSocialShare-AudibleLogo-Small,TopLeft,290,461_ZBLISTENING%20ON,290,410,52,500,AudibleSansMd,34,255,255,255_ZBLe%20H%C3%A9ros%20des%20si%C3%A8cles,290,1183,52,500,AudibleSansSm,32,255,255,255_ZBBrandon%20Sanderson,290,1247,52,500,AudibleSansRg,28,255,255,255.jpg",
+        "ig_sticker": "https://m.media-amazon.com/images/I/71UyRin7-TL._CLa%7C614,913%7C517+n0S19-L.jpg%7C0,0,614,913+70,79,471,473_FMpng_PJAudible-logo-dk,BottomLeft,70,-100_ZALe%20H%C3%A9ros%20des%20si...,70,560,65,500,AudibleSansSm,42,54,54,54_ZAby%20Brandon%20Sanderson,70,640,52,517,AudibleSansRg,32,0,0,0.png",
+        "twitter": "https://m.media-amazon.com/images/I/517+n0S19-L._SL10_UR1600,800_CR200,50,1024,512_CLa%7C1024,512%7C517+n0S19-L.jpg%7C0,0,1024,512+67,67,376,376_PJAdblSocialShare-Gradientoverlay-twitter-largeasin-0to60,TopLeft,0,0_PJAdblSocialShare-AudibleLogo-Medium,TopLeft,490,223_OU01_ZBLISTENING%20ON,483,152,55,450,AudibleSansMd,32,255,255,255.jpg"
+      },
+      "subtitle": "Fils des brumes 3",
+      "thesaurus_subject_keywords": [
+        "literature-and-fiction"
+      ],
+      "title": "Le Héros des siècles"
+    },
+    {
+      "asin": "B00TKMJQFO",
+      "asset_details": [],
+      "authors": [
+        {
+          "asin": "B001IGFHW6",
+          "name": "Brandon Sanderson"
+        }
+      ],
+      "available_codecs": [
+        {
+          "enhanced_codec": "LC_128_44100_stereo",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "aax_44_128"
+        },
+        {
+          "enhanced_codec": "LC_64_44100_stereo",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "aax_44_64"
+        },
+        {
+          "enhanced_codec": "aax",
+          "format": "Enhanced",
+          "is_kindle_enhanced": false,
+          "name": "aax"
+        }
+      ],
+      "category_ladders": [
+        {
+          "ladder": [
+            {
+              "id": "18580606011",
+              "name": "Science Fiction & Fantasy"
+            },
+            {
+              "id": "18580607011",
+              "name": "Fantasy"
+            },
+            {
+              "id": "18580622011",
+              "name": "Paranormal & Urban"
+            },
+            {
+              "id": "18580623011",
+              "name": "Contemporary"
+            }
+          ],
+          "root": "Genres"
+        }
+      ],
+      "content_delivery_type": "MultiPartBook",
+      "content_type": "Product",
+      "format_type": "unabridged",
+      "has_children": true,
+      "is_adult_product": false,
+      "is_listenable": true,
+      "is_purchasability_suppressed": false,
+      "is_vvab": false,
+      "issue_date": "2011-08-11",
+      "language": "german",
+      "merchandising_summary": "Roschar ist eine sturmumtoste Welt, die über Jahrtausende von übermenschlichen Kriegern regiert wurde...",
+      "narrators": [
+        {
+          "name": "Detlef Bierstedt"
+        }
+      ],
+      "product_images": {
+        "500": "https://m.media-amazon.com/images/I/51rRV7ArIIL._SL500_.jpg"
+      },
+      "publication_datetime": "2011-08-11T00:00:00Z",
+      "publication_name": "Die Sturmlicht-Chroniken",
+      "publisher_name": "Random House Audio, Deutschland",
+      "publisher_summary": "Roschar ist eine sturmumtoste Welt, die über Jahrtausende von übermenschlichen Kriegern regiert wurde, deren Schwerter jedes Leben auslöschen konnten. Doch die magischen Krieger sind verschwunden und Roschar droht zu zerfallen. Das Schicksal der Welt liegt nun in den Händen derer, die es wagen, die magischen Schwerter zu ergreifen... <p>Mit \"Der Pfad der Winde\" setzt Brandon Sanderson die atemberaubende Geschichte fort, die mit \"Der Weg der Könige\" begann - der amerikanische Bestsellerautor hat damit ein Epos vom Weltrang des \"Herrn der Ringe\" geschaffen. </p>",
+      "release_date": "2011-08-11",
+      "runtime_length_min": 1427,
+      "sku": "BK_RHDE_001369",
+      "sku_lite": "BK_RHDE_001369",
+      "social_media_images": {
+        "facebook": "https://m.media-amazon.com/images/I/51rRV7ArIIL._SL10_UR1600,800_CR200,50,1200,630_CLa%7C1200,630%7C51rRV7ArIIL.jpg%7C0,0,1200,630+82,82,465,465_PJAdblSocialShare-Gradientoverlay-largeasin-0to70,TopLeft,0,0_PJAdblSocialShare-AudibleLogo-Large,TopLeft,600,270_OU01_ZBLISTENING%20ON,617,216,52,500,AudibleSansMd,30,255,255,255.jpg",
+        "ig_bg": "https://m.media-amazon.com/images/I/51rRV7ArIIL._SL200_BL80_UR1080,2160.jpg",
+        "ig_static_with_bg": "https://m.media-amazon.com/images/I/51rRV7ArIIL._SL200_BL80_UR1080,2160_CLa%7C1080,2160%7C51rRV7ArIIL.jpg%7C0,0,1080,2160+288,614,500,500_PJAdblSocialShare-Gradientoverlay-Radial,TopLeft,0,0_PJAdblSocialShare-AudibleLogo-Small,TopLeft,290,461_ZBLISTENING%20ON,290,410,52,500,AudibleSansMd,34,255,255,255_ZBDer%20Pfad%20der%20Winde,290,1183,52,500,AudibleSansSm,32,255,255,255_ZBBrandon%20Sanderson,290,1247,52,500,AudibleSansRg,28,255,255,255.jpg",
+        "ig_sticker": "https://m.media-amazon.com/images/I/71UyRin7-TL._CLa%7C614,913%7C51rRV7ArIIL.jpg%7C0,0,614,913+70,79,471,473_FMpng_PJAudible-logo-dk,BottomLeft,70,-100_ZADer%20Pfad%20der%20Winde,70,560,65,500,AudibleSansSm,42,54,54,54_ZAby%20Brandon%20Sanderson,70,640,52,517,AudibleSansRg,32,0,0,0.png",
+        "twitter": "https://m.media-amazon.com/images/I/51rRV7ArIIL._SL10_UR1600,800_CR200,50,1024,512_CLa%7C1024,512%7C51rRV7ArIIL.jpg%7C0,0,1024,512+67,67,376,376_PJAdblSocialShare-Gradientoverlay-twitter-largeasin-0to60,TopLeft,0,0_PJAdblSocialShare-AudibleLogo-Medium,TopLeft,490,223_OU01_ZBLISTENING%20ON,483,152,55,450,AudibleSansMd,32,255,255,255.jpg"
+      },
+      "subtitle": "Die Sturmlicht-Chroniken 2",
+      "title": "Der Pfad der Winde"
+    }
+  ],
+  "response_groups": [
+    "product_desc",
+    "always-returned",
+    "product_extended_attrs",
+    "contributors",
+    "series",
+    "media",
+    "category_ladders",
+    "product_attrs"
+  ],
+  "total_results": 202
+}

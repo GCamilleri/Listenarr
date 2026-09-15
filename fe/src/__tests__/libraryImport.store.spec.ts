@@ -94,6 +94,9 @@ describe('library import store', () => {
           title: 'Ordered Book',
           authors: [],
         } as unknown as SearchResult,
+        matchState: 'matched',
+        matchIssue: 'none',
+        candidates: [],
         hasSearched: true,
         isSearching: false,
         selected: true,
@@ -153,6 +156,9 @@ describe('library import store', () => {
           title: 'Book',
           authors: [{ name: 'Author' }],
         } as unknown as SearchResult,
+        matchState: 'matched',
+        matchIssue: 'none',
+        candidates: [],
         hasSearched: true,
         isSearching: false,
         selected: true,
@@ -214,6 +220,9 @@ describe('library import store', () => {
           title: 'Book',
           authors: [{ name: 'Author' }],
         } as unknown as SearchResult,
+        matchState: 'matched',
+        matchIssue: 'none',
+        candidates: [],
         hasSearched: true,
         isSearching: false,
         selected: true,
@@ -259,6 +268,9 @@ describe('library import store', () => {
           title: 'Book',
           authors: [{ name: 'Author' }],
         } as unknown as SearchResult,
+        matchState: 'matched',
+        matchIssue: 'none',
+        candidates: [],
         hasSearched: true,
         isSearching: false,
         selected: true,
@@ -304,6 +316,9 @@ describe('library import store', () => {
           title: 'Book',
           authors: [{ name: 'Author' }],
         } as unknown as SearchResult,
+        matchState: 'matched',
+        matchIssue: 'none',
+        candidates: [],
         hasSearched: true,
         isSearching: false,
         selected: true,
@@ -383,6 +398,7 @@ describe('library import store', () => {
       {
         title: 'Jack of Shadows',
         authors: [{ name: 'Roger Zelazny' }],
+        matchScore: 0.95,
       },
     ])
 
@@ -399,6 +415,9 @@ describe('library import store', () => {
         format: 'MP3',
         fileCount: 1,
         selectedMatch: null,
+        matchState: 'unsearched',
+        matchIssue: 'none',
+        candidates: [],
         hasSearched: false,
         isSearching: false,
         selected: false,
@@ -408,13 +427,294 @@ describe('library import store', () => {
     store.startProcessing()
     await new Promise((resolve) => setTimeout(resolve, 0))
 
+    // cap is gone: it used to reach the Audible author page collector as a page size.
     expect(advancedSearch).toHaveBeenCalledWith({
       title: 'Jack of Shadows',
       author: 'Roger Zelazny',
-      cap: 5,
     })
-    expect(store.items['C:\\incoming\\Chapter 01.mp3']?.selectedMatch?.title).toBe(
-      'Jack of Shadows',
-    )
+    const row = store.items['C:\\incoming\\Chapter 01.mp3']
+    expect(row?.selectedMatch?.title).toBe('Jack of Shadows')
+    expect(row?.matchState).toBe('matched')
+    expect(row?.selected).toBe(true)
+  })
+
+  function unsearchedRow(overrides: Record<string, unknown> = {}) {
+    return {
+      id: 'C:\\incoming\\Chapter 01.mp3',
+      fullPath: 'C:\\incoming\\Chapter 01.mp3',
+      sourceFiles: ['C:\\incoming\\Chapter 01.mp3'],
+      folderPath: 'C:\\incoming',
+      relativePath: 'test-import',
+      folderName: 'test-import',
+      detectedTitle: 'Chapter 1',
+      detectedAuthor: 'Michael Kramer',
+      format: 'MP3',
+      fileCount: 1,
+      selectedMatch: null,
+      matchState: 'unsearched',
+      matchIssue: 'none',
+      candidates: [],
+      hasSearched: false,
+      isSearching: false,
+      selected: false,
+      ...overrides,
+    }
+  }
+
+  it('leaves a low-confidence row unticked and keeps its candidates', async () => {
+    const { useLibraryImportStore } = await import('@/stores/libraryImport')
+    const store = useLibraryImportStore()
+
+    advancedSearch.mockResolvedValue([
+      { title: 'The Way of Kings', authors: [{ name: 'Brandon Sanderson' }], matchScore: 0.31 },
+      { title: 'Words of Radiance', authors: [{ name: 'Brandon Sanderson' }], matchScore: 0.12 },
+    ])
+
+    store.items = { 'C:\\incoming\\Chapter 01.mp3': unsearchedRow() as never }
+
+    store.startProcessing()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    const row = store.items['C:\\incoming\\Chapter 01.mp3']
+    expect(row?.matchState).toBe('needs-review')
+    expect(row?.matchIssue).toBe('low-confidence')
+    expect(row?.selected).toBe(false)
+    expect(row?.candidates).toHaveLength(2)
+    expect(row?.selectedMatch?.title).toBe('The Way of Kings')
+  })
+
+  it('auto-matches a confident result and ticks it', async () => {
+    const { useLibraryImportStore } = await import('@/stores/libraryImport')
+    const store = useLibraryImportStore()
+
+    advancedSearch.mockResolvedValue([
+      { asin: 'B004SOK2SE', title: 'Mistborn', matchScore: 0.96, lengthMinutes: 1499 },
+      { asin: 'B07F88TSBT', title: 'Mistborn: Secret History', matchScore: 0.46, lengthMinutes: 329 },
+    ])
+
+    store.items = {
+      'C:\\incoming\\Chapter 01.mp3': unsearchedRow({
+        detectedTitle: 'Mistborn, The Final Empire',
+        detectedAuthor: 'Brandon Sanderson',
+        durationSeconds: 1499 * 60,
+      }) as never,
+    }
+
+    store.startProcessing()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(advancedSearch).toHaveBeenCalledWith({
+      title: 'Mistborn, The Final Empire',
+      author: 'Brandon Sanderson',
+      durationSeconds: 1499 * 60,
+    })
+    const row = store.items['C:\\incoming\\Chapter 01.mp3']
+    expect(row?.matchState).toBe('matched')
+    expect(row?.selected).toBe(true)
+    expect(row?.selectedMatch?.asin).toBe('B004SOK2SE')
+  })
+
+  it('does not auto-select an ASIN search that came back under a different ASIN', async () => {
+    const { useLibraryImportStore } = await import('@/stores/libraryImport')
+    const store = useLibraryImportStore()
+
+    advancedSearch.mockResolvedValue([
+      { asin: 'B000DIFFERENT', title: 'Something Else', matchScore: 0.99 },
+    ])
+
+    store.items = {
+      'C:\\incoming\\Chapter 01.mp3': unsearchedRow({ detectedAsin: 'B004SOK2SE' }) as never,
+    }
+
+    store.startProcessing()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(advancedSearch).toHaveBeenCalledWith({ asin: 'B004SOK2SE' })
+    const row = store.items['C:\\incoming\\Chapter 01.mp3']
+    expect(row?.matchState).toBe('needs-review')
+    expect(row?.selected).toBe(false)
+  })
+
+  it('refuses two near-identical scores as an automatic match', async () => {
+    const { useLibraryImportStore } = await import('@/stores/libraryImport')
+    const store = useLibraryImportStore()
+
+    advancedSearch.mockResolvedValue([
+      { title: 'Mistborn', matchScore: 0.82 },
+      { title: 'Mistborn: Secret History', matchScore: 0.79 },
+    ])
+
+    store.items = { 'C:\\incoming\\Chapter 01.mp3': unsearchedRow() as never }
+
+    store.startProcessing()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    const row = store.items['C:\\incoming\\Chapter 01.mp3']
+    expect(row?.matchState).toBe('needs-review')
+    expect(row?.matchIssue).toBe('ambiguous')
+    expect(row?.selected).toBe(false)
+  })
+
+  it('leaves a rate-limited row unsearched and pauses the queue', async () => {
+    const { useLibraryImportStore } = await import('@/stores/libraryImport')
+    const store = useLibraryImportStore()
+
+    advancedSearch.mockRejectedValue(Object.assign(new Error('Rate limited'), {
+      status: 429,
+      retryAfter: 30,
+    }))
+
+    store.items = {
+      'C:\\incoming\\Chapter 01.mp3': unsearchedRow() as never,
+      'C:\\incoming\\Chapter 02.mp3': unsearchedRow({
+        id: 'C:\\incoming\\Chapter 02.mp3',
+        fullPath: 'C:\\incoming\\Chapter 02.mp3',
+      }) as never,
+    }
+
+    store.startProcessing()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    const row = store.items['C:\\incoming\\Chapter 01.mp3']
+    expect(row?.matchState).toBe('unsearched')
+    expect(row?.hasSearched).toBe(false)
+    expect(row?.matchIssue).toBe('rate-limited')
+    expect(store.isProcessing).toBe(false)
+    expect(store.queuePausedReason).toContain('rate limited')
+    // The second row was never attempted, so the limit is not burned through twice over.
+    expect(advancedSearch).toHaveBeenCalledTimes(1)
+  })
+
+  it('retries only unmatched and needs-review rows with the folder-name strategy', async () => {
+    const { useLibraryImportStore } = await import('@/stores/libraryImport')
+    const store = useLibraryImportStore()
+
+    advancedSearch.mockResolvedValue([])
+
+    store.items = {
+      matched: unsearchedRow({
+        id: 'matched',
+        fullPath: 'C:\\incoming\\Matched.mp3',
+        folderName: 'Matched Folder',
+        matchState: 'matched',
+        hasSearched: true,
+        selected: true,
+        selectedMatch: { title: 'Matched' },
+      }) as never,
+      review: unsearchedRow({
+        id: 'review',
+        fullPath: 'C:\\incoming\\Review.mp3',
+        folderName: 'Review Folder',
+        matchState: 'needs-review',
+        hasSearched: true,
+        selectedMatch: { title: 'Maybe' },
+      }) as never,
+      missing: unsearchedRow({
+        id: 'missing',
+        fullPath: 'C:\\incoming\\Missing.mp3',
+        folderName: 'Missing Folder',
+        matchState: 'unmatched',
+        hasSearched: true,
+      }) as never,
+    }
+
+    store.retryUnmatched('folder')
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(advancedSearch).toHaveBeenCalledTimes(2)
+    expect(advancedSearch).toHaveBeenCalledWith({ title: 'Review Folder' })
+    expect(advancedSearch).toHaveBeenCalledWith({ title: 'Missing Folder' })
+    expect(advancedSearch).not.toHaveBeenCalledWith({ title: 'Matched Folder' })
+  })
+
+  it('select all ticks only rows the scorer was confident about', async () => {
+    const { useLibraryImportStore } = await import('@/stores/libraryImport')
+    const store = useLibraryImportStore()
+
+    store.items = {
+      matched: unsearchedRow({
+        id: 'matched',
+        matchState: 'matched',
+        hasSearched: true,
+        selectedMatch: { title: 'Matched' },
+      }) as never,
+      review: unsearchedRow({
+        id: 'review',
+        matchState: 'needs-review',
+        hasSearched: true,
+        selectedMatch: { title: 'Maybe' },
+      }) as never,
+    }
+
+    store.toggleSelectAll()
+
+    expect(store.items['matched']?.selected).toBe(true)
+    expect(store.items['review']?.selected).toBe(false)
+    expect(store.selectedCount).toBe(1)
+  })
+
+  it('keeps runtime in minutes and sends isbn as an array', async () => {
+    const { useLibraryImportStore } = await import('@/stores/libraryImport')
+    const store = useLibraryImportStore()
+
+    store.items = {
+      'C:\\incoming\\Book.m4b': unsearchedRow({
+        id: 'C:\\incoming\\Book.m4b',
+        fullPath: 'C:\\incoming\\Book.m4b',
+        sourceFiles: ['C:\\incoming\\Book.m4b'],
+        matchState: 'matched',
+        hasSearched: true,
+        selected: true,
+        selectedMatch: {
+          title: 'Mistborn',
+          asin: 'B004SOK2SE',
+          lengthMinutes: 600,
+          isbn: '9780575089914',
+          series: [
+            { name: 'The Mistborn Saga', position: '1', asin: 'B0S1' },
+            { name: 'The Cosmere', position: '', asin: 'B0S2' },
+          ],
+        },
+      }) as never,
+    }
+    store.action = 'none'
+    startManualImport.mockResolvedValueOnce({
+      importedCount: 1,
+      totalCount: 1,
+      results: [{ success: true }],
+    })
+
+    await store.importSelected('')
+
+    const [metadata, options] = addToLibrary.mock.calls[0] as [
+      Record<string, unknown>,
+      { searchResult?: Record<string, unknown> },
+    ]
+    expect(metadata.runtime).toBe(600)
+    expect(metadata.seriesMemberships).toEqual([
+      { seriesName: 'The Mistborn Saga', seriesNumber: '1', seriesAsin: 'B0S1', isPrimary: true, sortOrder: 0 },
+      { seriesName: 'The Cosmere', seriesNumber: '', seriesAsin: 'B0S2', isPrimary: false, sortOrder: 1 },
+    ])
+    expect(options.searchResult?.isbn).toEqual(['9780575089914'])
+  })
+
+  it('refuses to import a row that was never confirmed', async () => {
+    const { useLibraryImportStore } = await import('@/stores/libraryImport')
+    const store = useLibraryImportStore()
+
+    store.items = {
+      review: unsearchedRow({
+        id: 'review',
+        matchState: 'needs-review',
+        hasSearched: true,
+        selected: true,
+        selectedMatch: { title: 'Maybe' },
+      }) as never,
+    }
+
+    const result = await store.importSelected('')
+
+    expect(result.imported).toBe(0)
+    expect(addToLibrary).not.toHaveBeenCalled()
   })
 })

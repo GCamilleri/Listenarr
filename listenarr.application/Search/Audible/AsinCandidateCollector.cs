@@ -44,7 +44,7 @@ public class AsinCandidateCollector
     /// <summary>
     /// Collects ASIN candidates from non-scraping sources.
     /// </summary>
-    public async Task<AsinCandidateCollection> CollectCandidatesAsync(
+    public virtual async Task<AsinCandidateCollection> CollectCandidatesAsync(
         string query,
         bool skipOpenLibrary = false,
         CancellationToken ct = default)

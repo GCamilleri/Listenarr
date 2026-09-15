@@ -37,8 +37,9 @@ namespace Listenarr.Tests.Features.Api.Features.Search
                     It.IsAny<double>(),
                     It.IsAny<string>(),
                     It.IsAny<string?>(),
-                    It.IsAny<CancellationToken>()))
-                .Returns((string query, int _, int _, string _, bool _, double _, string _, string? _, CancellationToken _) =>
+                    It.IsAny<CancellationToken>(),
+                    It.IsAny<int?>()))
+                .Returns((string query, int _, int _, string _, bool _, double _, string _, string? _, CancellationToken _, int? _) =>
                 {
                     capturedQuery = query;
                     return Task.FromResult(new List<MetadataSearchResult>());

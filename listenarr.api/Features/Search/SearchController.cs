@@ -88,8 +88,25 @@ namespace Listenarr.Api.Features.Search
         [HttpPost]
         public async Task<ActionResult<object>> Search([FromBody] JsonElement reqJson, [FromQuery] bool? simplified = null)
         {
-            var result = await _structuredSearchWorkflow.ExecuteAsync(reqJson, simplified, HttpContext);
-            return result.Succeeded ? Ok(result.Payload) : BadRequest(result.Payload);
+            try
+            {
+                var result = await _structuredSearchWorkflow.ExecuteAsync(reqJson, simplified, HttpContext);
+                return result.Succeeded ? Ok(result.Payload) : BadRequest(result.Payload);
+            }
+            catch (MetadataSearchUnavailableException ex)
+            {
+                // Never answer a provider outage with 200 and an empty array: the caller would
+                // record the row as searched and never come back to it.
+                if (ex.RetryAfter.HasValue)
+                {
+                    Response.Headers.RetryAfter = ((int)Math.Ceiling(ex.RetryAfter.Value.TotalSeconds)).ToString(System.Globalization.CultureInfo.InvariantCulture);
+                }
+
+                _logger.LogWarning(ex, "Metadata search could not be completed (rateLimited={RateLimited})", ex.RateLimited);
+                return StatusCode(
+                    ex.RateLimited ? StatusCodes.Status429TooManyRequests : StatusCodes.Status503ServiceUnavailable,
+                    new { error = ex.Message, rateLimited = ex.RateLimited });
+            }
         }
 
         /// <summary>

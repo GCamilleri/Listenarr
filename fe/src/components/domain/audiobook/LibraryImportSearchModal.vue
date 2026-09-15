@@ -31,7 +31,9 @@
               placeholder="Title or ASIN…"
               @input="onInput"
               @keydown.escape="emit('close')"
-              @keydown.enter="runSearch"
+              @keydown.down.prevent="moveActive(1)"
+              @keydown.up.prevent="moveActive(-1)"
+              @keydown.enter.prevent="onEnter"
             />
           </div>
           <div class="search-input-row">
@@ -41,18 +43,40 @@
               placeholder="Author (optional)…"
               @input="onInput"
               @keydown.escape="emit('close')"
-              @keydown.enter="runSearch"
+              @keydown.down.prevent="moveActive(1)"
+              @keydown.up.prevent="moveActive(-1)"
+              @keydown.enter.prevent="onEnter"
             />
             <PhSpinner v-if="isSearching" class="ph-spin search-spinner" :size="16" />
           </div>
         </div>
 
+        <div class="strategy-chips">
+          <button
+            v-for="strategy in strategies"
+            :key="strategy.value"
+            type="button"
+            class="strategy-chip"
+            :class="{ active: activeStrategy === strategy.value }"
+            :data-strategy="strategy.value"
+            @click="applyStrategy(strategy.value)"
+          >
+            {{ strategy.label }}
+          </button>
+        </div>
+
+        <div v-if="searchError" class="search-error" data-testid="search-error">
+          {{ searchError }}
+        </div>
+
         <div v-if="searchResults.length > 0" class="results-list">
           <div
-            v-for="result in searchResults"
-            :key="result.asin ?? result.title"
+            v-for="(result, index) in searchResults"
+            :key="result.asin ?? result.id ?? result.title"
             class="result-item"
+            :class="{ active: index === activeIndex }"
             @click="select(result)"
+            @mouseenter="activeIndex = index"
           >
             <img
               v-if="result.imageUrl"
@@ -61,22 +85,24 @@
               alt=""
             />
             <div class="result-info">
-              <span class="result-title">{{ result.title }}</span>
-              <span class="result-meta">
-                {{ result.authors?.[0]?.name }}
-                <span v-if="result.series">
-                  ·
-                  {{
-                    Array.isArray(result.series) ? (result.series as any)[0]?.name : result.series
-                  }}</span
-                >
-                <span v-if="result.asin" class="result-asin"> · {{ result.asin }}</span>
+              <span class="result-title">
+                {{ result.title
+                }}<span v-if="result.subtitle" class="result-subtitle"> - {{ result.subtitle }}</span>
               </span>
+              <span class="result-meta">{{ formatCandidateMeta(result) }}</span>
+              <span v-if="result.asin" class="result-asin">{{ result.asin }}</span>
             </div>
+            <span
+              v-if="result.matchScore != null"
+              class="result-score"
+              :title="(result.matchReasons ?? []).join(', ')"
+            >
+              {{ Math.round(result.matchScore * 100) }}%
+            </span>
           </div>
         </div>
 
-        <div v-else-if="hasSearched && !isSearching" class="no-results">
+        <div v-else-if="hasSearched && !isSearching && !searchError" class="no-results">
           No results for "{{ searchQuery }}"{{ authorQuery ? ` by "${authorQuery}"` : '' }}
         </div>
 
@@ -96,9 +122,13 @@ import { apiService } from '@/services/api'
 import { useProtectedImages } from '@/composables/useProtectedImages'
 import type { LibraryImportItem } from '@/stores/libraryImport'
 import {
+  LIBRARY_IMPORT_SEARCH_STRATEGIES,
   buildLibraryImportInitialAuthor,
-  buildLibraryImportInitialQuery,
+  buildLibraryImportSearchParams,
+  looksLikeAsin,
 } from '@/utils/libraryImportSearch'
+import type { LibraryImportSearchStrategy } from '@/utils/libraryImportSearch'
+import { formatCandidateMeta } from '@/utils/libraryImportCandidate'
 import { getPlaceholderUrl } from '@/utils/placeholder'
 import type { SearchResult } from '@/types'
 
@@ -111,16 +141,21 @@ const emit = defineEmits<{
 const { getProtectedImageSrc } = useProtectedImages()
 const inputEl = ref<HTMLInputElement | null>(null)
 const placeholderUrl = getPlaceholderUrl()
-// Build the initial query: ASIN → filename stem (when more specific than folder) → folderName
-// detectedTitle comes from the audio file's "album" tag which is often the series name — skip it
-function initialQuery(): string {
-  return buildLibraryImportInitialQuery(props.item)
-}
-const searchQuery = ref(initialQuery())
+const strategies = LIBRARY_IMPORT_SEARCH_STRATEGIES
+
+// Start from the same query the automatic search used, so retyping the same words is not the
+// first thing a user has to do. The detected title is included: after the scan changes it is the
+// album tag or the folder name, and both are worth trying.
+const activeStrategy = ref<LibraryImportSearchStrategy>('title-author')
+const searchQuery = ref(buildLibraryImportSearchParams(props.item, 'title-author').title ?? '')
 const authorQuery = ref(buildLibraryImportInitialAuthor(props.item))
 const searchResults = ref<SearchResult[]>([])
 const isSearching = ref(false)
 const hasSearched = ref(false)
+const searchError = ref<string | null>(null)
+const activeIndex = ref(0)
+
+const RESULT_LIMIT = 20
 
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -136,18 +171,59 @@ function onInput() {
   debounceTimer = setTimeout(() => runSearch(), 400)
 }
 
+function applyStrategy(strategy: LibraryImportSearchStrategy) {
+  activeStrategy.value = strategy
+  const params = buildLibraryImportSearchParams(props.item, strategy)
+  searchQuery.value = params.title ?? searchQuery.value
+  authorQuery.value = params.author ?? ''
+  runSearch()
+}
+
+function moveActive(delta: number) {
+  if (searchResults.value.length === 0) return
+  const next = activeIndex.value + delta
+  activeIndex.value = Math.min(Math.max(next, 0), searchResults.value.length - 1)
+}
+
+function onEnter() {
+  const active = searchResults.value[activeIndex.value]
+  if (active) {
+    select(active)
+    return
+  }
+  runSearch()
+}
+
 async function runSearch() {
   const q = searchQuery.value.trim()
   if (!q) return
   isSearching.value = true
   hasSearched.value = false
+  searchError.value = null
   try {
-    const isAsin = /^[A-Z0-9]{10}$/i.test(q)
+    const isAsin = looksLikeAsin(q)
     const params = isAsin
-      ? { asin: q, cap: 5 }
-      : { title: q, author: authorQuery.value.trim() || undefined, cap: 5 }
-    searchResults.value = await apiService.advancedSearch(params)
+      ? { asin: q }
+      : {
+          title: q,
+          author: authorQuery.value.trim() || undefined,
+          pagination: { limit: RESULT_LIMIT },
+          ...(props.item.durationSeconds ? { durationSeconds: props.item.durationSeconds } : {}),
+        }
+    const results = await apiService.advancedSearch(params)
+    searchResults.value = [...results]
+      .sort((a, b) => (b.matchScore ?? -1) - (a.matchScore ?? -1))
+      .slice(0, RESULT_LIMIT)
+    activeIndex.value = 0
     hasSearched.value = true
+  } catch (e) {
+    // Without this the spinner just stopped and the modal looked like it found nothing.
+    searchResults.value = []
+    hasSearched.value = true
+    searchError.value =
+      (e as { status?: number })?.status === 429
+        ? 'Rate limited by the metadata provider. Wait a moment and try again.'
+        : `The search failed: ${(e as Error)?.message ?? 'unknown error'}`
   } finally {
     isSearching.value = false
   }
@@ -246,6 +322,48 @@ function select(result: SearchResult) {
 .result-asin {
   font-family: monospace;
   font-size: 0.7rem;
+  color: #6f7888;
+}
+
+.result-subtitle {
+  color: #9aa4b5;
+}
+
+.result-item.active {
+  background: #2a2a2a;
+}
+
+.result-score {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  color: #9aa4b5;
+}
+
+.strategy-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.strategy-chip {
+  border: 1px solid #333;
+  border-radius: 999px;
+  background: none;
+  color: #9aa4b5;
+  font-size: 0.7rem;
+  padding: 0.16rem 0.5rem;
+  cursor: pointer;
+}
+
+.strategy-chip.active,
+.strategy-chip:hover {
+  border-color: var(--brand-500, #6366f1);
+  color: #e0e0e0;
+}
+
+.search-error {
+  font-size: 0.78rem;
+  color: #f59e0b;
 }
 
 .no-results,

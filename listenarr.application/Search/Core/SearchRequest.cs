@@ -56,6 +56,10 @@ namespace Listenarr.Application.Search.Core
 
         // Optional cap on number of results to return
         public int? Cap { get; set; }
+
+        // Known runtime of the files being matched, in seconds. Used to rank candidates: it is
+        // what separates Mistborn (1499 min) from Mistborn: Secret History (329 min).
+        public int? DurationSeconds { get; set; }
     }
 
     // Options to control MyAnonamouse (MyAnonamouse.net) search behavior

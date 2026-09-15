@@ -21,6 +21,16 @@ using Microsoft.Extensions.Logging;
 
 namespace Listenarr.Application.Metadata.Audible
 {
+    /// <summary>
+    /// The outcome of one Audible API request. <see cref="Failed"/> separates "the request did not
+    /// complete" from "the request completed and found nothing".
+    /// </summary>
+    internal sealed record AudibleApiResponse(
+        JsonDocument? Document,
+        bool Failed,
+        bool RateLimited,
+        TimeSpan? RetryAfter);
+
     internal sealed class AudibleApiClient
     {
         private const string BrowserAcceptHeader = "application/json, text/plain, */*";
@@ -63,6 +73,20 @@ namespace Listenarr.Application.Metadata.Audible
             bool includeLocaleHeaders,
             int timeoutSeconds)
         {
+            var result = await GetJsonDocumentResultAsync(url, region, includeLocaleHeaders, timeoutSeconds);
+            return result.Document;
+        }
+
+        /// <summary>
+        /// Same request as <see cref="GetJsonDocumentAsync"/>, but tells the caller whether the
+        /// request failed. A 429, a timeout or a transport error must not read as "no results".
+        /// </summary>
+        public async Task<AudibleApiResponse> GetJsonDocumentResultAsync(
+            string url,
+            string region,
+            bool includeLocaleHeaders,
+            int timeoutSeconds)
+        {
             try
             {
                 using var request = new HttpRequestMessage(HttpMethod.Get, url);
@@ -82,23 +106,53 @@ namespace Listenarr.Application.Metadata.Audible
                 var response = await _httpClient.SendAsync(request, cts.Token);
                 if (!response.IsSuccessStatusCode)
                 {
-                    _logger.LogWarning("Audible API returned status code {StatusCode} for URL {Url}", response.StatusCode, url);
-                    return null;
+                    var rateLimited = response.StatusCode == System.Net.HttpStatusCode.TooManyRequests;
+                    var retryAfter = ReadRetryAfter(response);
+                    _logger.LogWarning(
+                        "Audible API returned status code {StatusCode} for URL {Url} (rateLimited={RateLimited}, retryAfter={RetryAfter})",
+                        response.StatusCode,
+                        url,
+                        rateLimited,
+                        retryAfter);
+                    return new AudibleApiResponse(null, Failed: true, RateLimited: rateLimited, RetryAfter: retryAfter);
                 }
 
                 await using var stream = await response.Content.ReadAsStreamAsync(cts.Token);
-                return await JsonDocument.ParseAsync(stream, cancellationToken: cts.Token);
+                var document = await JsonDocument.ParseAsync(stream, cancellationToken: cts.Token);
+                return new AudibleApiResponse(document, Failed: false, RateLimited: false, RetryAfter: null);
             }
             catch (TaskCanceledException ex)
             {
                 _logger.LogWarning(ex, "Audible API request timed out for URL: {Url}", url);
-                return null;
+                return new AudibleApiResponse(null, Failed: true, RateLimited: false, RetryAfter: null);
             }
             catch (Exception ex) when (ex is not OperationCanceledException && ex is not OutOfMemoryException && ex is not StackOverflowException)
             {
                 _logger.LogError(ex, "Error performing Audible API request for URL: {Url}", url);
+                return new AudibleApiResponse(null, Failed: true, RateLimited: false, RetryAfter: null);
+            }
+        }
+
+        private static TimeSpan? ReadRetryAfter(HttpResponseMessage response)
+        {
+            var retryAfter = response.Headers.RetryAfter;
+            if (retryAfter == null)
+            {
                 return null;
             }
+
+            if (retryAfter.Delta.HasValue)
+            {
+                return retryAfter.Delta;
+            }
+
+            if (retryAfter.Date.HasValue)
+            {
+                var delay = retryAfter.Date.Value - DateTimeOffset.UtcNow;
+                return delay > TimeSpan.Zero ? delay : TimeSpan.Zero;
+            }
+
+            return null;
         }
 
         public async Task<HttpResponseMessage?> GetWithTimeoutAsync(string url, int timeoutSeconds = 5)

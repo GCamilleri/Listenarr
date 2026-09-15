@@ -30,8 +30,9 @@ namespace Listenarr.Application.Search.Contracts
         /// <param name="region">Region code to prefer when querying metadata providers (default: us)</param>
         /// <param name="language">Optional language code to filter metadata results (e.g. en, de)</param>
         /// <param name="ct">Cancellation token to cancel the intelligent search operation.</param>
+        /// <param name="durationSeconds">Known runtime of the files being matched, used to rank candidates</param>
         /// <returns>Search results enriched with metadata from configured sources</returns>
-        Task<List<MetadataSearchResult>> IntelligentSearchAsync(string query, int candidateLimit = 50, int returnLimit = 50, string containmentMode = "Relaxed", bool requireAuthorAndPublisher = false, double fuzzyThreshold = 0.7, string region = "us", string? language = null, CancellationToken ct = default);
+        Task<List<MetadataSearchResult>> IntelligentSearchAsync(string query, int candidateLimit = 50, int returnLimit = 50, string containmentMode = "Relaxed", bool requireAuthorAndPublisher = false, double fuzzyThreshold = 0.7, string region = "us", string? language = null, CancellationToken ct = default, int? durationSeconds = null);
 
         /// <summary>
         /// Searches a specific API/indexer by ID

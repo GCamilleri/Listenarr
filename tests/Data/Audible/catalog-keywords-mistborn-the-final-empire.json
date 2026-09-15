@@ -1,0 +1,539 @@
+{
+  "product_filters": [],
+  "products": [
+    {
+      "asin": "B07F88TSBT",
+      "asset_details": [],
+      "authors": [
+        {
+          "asin": "B001IGFHW6",
+          "name": "Brandon Sanderson"
+        }
+      ],
+      "available_codecs": [
+        {
+          "enhanced_codec": "format4",
+          "format": "Format4",
+          "is_kindle_enhanced": false,
+          "name": "format4"
+        },
+        {
+          "enhanced_codec": "LC_64_22050_stereo",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "aax_22_64"
+        },
+        {
+          "enhanced_codec": "LC_32_22050_stereo",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "aax_22_32"
+        },
+        {
+          "enhanced_codec": "mp42264",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "mp4_22_64"
+        },
+        {
+          "enhanced_codec": "mp42232",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "mp4_22_32"
+        },
+        {
+          "enhanced_codec": "aax",
+          "format": "Enhanced",
+          "is_kindle_enhanced": false,
+          "name": "aax"
+        }
+      ],
+      "category_ladders": [
+        {
+          "ladder": [
+            {
+              "id": "18580606011",
+              "name": "Science Fiction & Fantasy"
+            },
+            {
+              "id": "18580607011",
+              "name": "Fantasy"
+            },
+            {
+              "id": "18580609011",
+              "name": "Anthologies & Short Stories"
+            }
+          ],
+          "root": "Genres"
+        },
+        {
+          "ladder": [
+            {
+              "id": "18580606011",
+              "name": "Science Fiction & Fantasy"
+            },
+            {
+              "id": "18580607011",
+              "name": "Fantasy"
+            },
+            {
+              "id": "18580615011",
+              "name": "Epic"
+            }
+          ],
+          "root": "Genres"
+        },
+        {
+          "ladder": [
+            {
+              "id": "18580606011",
+              "name": "Science Fiction & Fantasy"
+            },
+            {
+              "id": "18580607011",
+              "name": "Fantasy"
+            },
+            {
+              "id": "18580618011",
+              "name": "Historical"
+            }
+          ],
+          "root": "Genres"
+        }
+      ],
+      "content_delivery_type": "SinglePartBook",
+      "content_type": "Product",
+      "editorial_reviews": [
+        "Rather engaging and highly addictive."
+      ],
+      "format_type": "unabridged",
+      "has_children": false,
+      "is_adult_product": false,
+      "is_listenable": true,
+      "is_purchasability_suppressed": false,
+      "is_vvab": false,
+      "issue_date": "2019-01-10",
+      "language": "english",
+      "merchandising_summary": "THE INTERNATIONAL PHENOMENON BEHIND THE COSMERE A COMPANION STORY TO THE ORIGINAL MISTBORN TRILOGY **** There's always another secret. Mistborn: Secret History is a companion story to the original Mistborn trilogy. As such, it contains HUGE SPOILERS for the books Mistborn (The Final Empire), The...",
+      "narrators": [
+        {
+          "name": "Michael Kramer"
+        }
+      ],
+      "product_images": {
+        "500": "https://m.media-amazon.com/images/I/51Vdq0UsANL._SL500_.jpg"
+      },
+      "publication_datetime": "2019-01-10T08:00:00Z",
+      "publication_name": "The Mistborn Saga",
+      "publisher_name": "Gollancz",
+      "publisher_summary": "<b> THE INTERNATIONAL PHENOMENON BEHIND THE COSMERE </b><br /> <br /><b>A COMPANION STORY TO THE ORIGINAL MISTBORN TRILOGY</b><br /><br />****<br /> <br /><b>There's always another secret.</b><br /><br /><b>Mistborn: Secret History</b> is a companion story to the original Mistborn trilogy. <br /><br />As such, it contains HUGE SPOILERS for the books Mistborn (<i>The Final Empire</i>), <i>The Well of Ascension</i>, and <i>The Hero of Ages</i>. It also contains very minor spoilers for the book <i>The Bands of Mourning</i>. <br /><br /><b>Mistborn: Secret History</b> builds upon the characterization, events, and worldbuilding of the original trilogy. Reading it without that background will be a confusing process at best. <br /><br />In short, this isn't the place to start your journey into Mistborn (though if you have read the trilogy - but it has been a while - you should be just fine, so long as you remember the characters and the general plot of the books). <br /><br />Saying anything more here risks revealing too much. Even knowledge of this story's existence is, in a way, a spoiler...<br /><br /> ****<br /><br /> <b>FANTASY DOESN'T GET BETTER THAN SANDERSON:</b><br /><br /> 'Highly recommend to anyone hungry for a good read'<br /> <b>ROBIN HOBB</b><br /><br /> 'Epic in every sense'<br /> <b><i>GUARDIAN</i></b><br /><br /> 'Sanderson is the most immersive fantasy writer I've ever encountered'<br /> <b>BEN AARONOVITCH</b><br /><br /> 'All the explosive action any adventure fan could want'<br /> <b><i>LOCUS</i></b>",
+      "release_date": "2019-01-10",
+      "runtime_length_min": 329,
+      "series": [
+        {
+          "asin": "B006K1P698",
+          "sequence": "3.5",
+          "title": "The Mistborn Saga",
+          "url": "/pd/The-Mistborn-Saga-Audiobook/B006K1P698"
+        }
+      ],
+      "sku": "BK_ORIO_001880",
+      "sku_lite": "BK_ORIO_001880",
+      "social_media_images": {
+        "facebook": "https://m.media-amazon.com/images/I/51Vdq0UsANL._SL10_UR1600,800_CR200,50,1200,630_CLa%7C1200,630%7C51Vdq0UsANL.jpg%7C0,0,1200,630+82,82,465,465_PJAdblSocialShare-Gradientoverlay-largeasin-0to70,TopLeft,0,0_PJAdblSocialShare-AudibleLogo-Large,TopLeft,600,270_OU01_ZBLISTENING%20ON,617,216,52,500,AudibleSansMd,30,255,255,255.jpg",
+        "ig_bg": "https://m.media-amazon.com/images/I/51Vdq0UsANL._SL200_BL80_UR1080,2160.jpg",
+        "ig_static_with_bg": "https://m.media-amazon.com/images/I/51Vdq0UsANL._SL200_BL80_UR1080,2160_CLa%7C1080,2160%7C51Vdq0UsANL.jpg%7C0,0,1080,2160+288,614,500,500_PJAdblSocialShare-Gradientoverlay-Radial,TopLeft,0,0_PJAdblSocialShare-AudibleLogo-Small,TopLeft,290,461_ZBLISTENING%20ON,290,410,52,500,AudibleSansMd,34,255,255,255_ZBMistborn%3A%20Secret%20History,290,1183,52,500,AudibleSansSm,32,255,255,255_ZBBrandon%20Sanderson,290,1247,52,500,AudibleSansRg,28,255,255,255.jpg",
+        "ig_sticker": "https://m.media-amazon.com/images/I/71UyRin7-TL._CLa%7C614,913%7C51Vdq0UsANL.jpg%7C0,0,614,913+70,79,471,473_FMpng_PJAudible-logo-dk,BottomLeft,70,-100_ZAMistborn%3A%20Secre...,70,560,65,500,AudibleSansSm,42,54,54,54_ZAby%20Brandon%20Sanderson,70,640,52,517,AudibleSansRg,32,0,0,0.png",
+        "twitter": "https://m.media-amazon.com/images/I/51Vdq0UsANL._SL10_UR1600,800_CR200,50,1024,512_CLa%7C1024,512%7C51Vdq0UsANL.jpg%7C0,0,1024,512+67,67,376,376_PJAdblSocialShare-Gradientoverlay-twitter-largeasin-0to60,TopLeft,0,0_PJAdblSocialShare-AudibleLogo-Medium,TopLeft,490,223_OU01_ZBLISTENING%20ON,483,152,55,450,AudibleSansMd,32,255,255,255.jpg"
+      },
+      "thesaurus_subject_keywords": [
+        "la_confidential"
+      ],
+      "title": "Mistborn: Secret History"
+    },
+    {
+      "asin": "8417347631",
+      "asset_details": [],
+      "authors": [
+        {
+          "asin": "B001IGFHW6",
+          "name": "Brandon Sanderson"
+        },
+        {
+          "name": "Rafael Marín Trechera"
+        }
+      ],
+      "available_codecs": [
+        {
+          "enhanced_codec": "LC_64_22050_stereo",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "aax_22_64"
+        },
+        {
+          "enhanced_codec": "LC_64_44100_stereo",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "aax_44_64"
+        },
+        {
+          "enhanced_codec": "LC_128_44100_stereo",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "aax_44_128"
+        },
+        {
+          "enhanced_codec": "LC_32_22050_stereo",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "aax_22_32"
+        },
+        {
+          "enhanced_codec": "aax",
+          "format": "Enhanced",
+          "is_kindle_enhanced": false,
+          "name": "aax"
+        }
+      ],
+      "category_ladders": [
+        {
+          "ladder": [
+            {
+              "id": "18574426011",
+              "name": "Literature & Fiction"
+            },
+            {
+              "id": "18574456011",
+              "name": "Genre Fiction"
+            },
+            {
+              "id": "18574476011",
+              "name": "Sagas"
+            }
+          ],
+          "root": "Genres"
+        },
+        {
+          "ladder": [
+            {
+              "id": "18580606011",
+              "name": "Science Fiction & Fantasy"
+            },
+            {
+              "id": "18580607011",
+              "name": "Fantasy"
+            },
+            {
+              "id": "18580608011",
+              "name": "Action & Adventure"
+            }
+          ],
+          "root": "Genres"
+        },
+        {
+          "ladder": [
+            {
+              "id": "18580606011",
+              "name": "Science Fiction & Fantasy"
+            },
+            {
+              "id": "18580607011",
+              "name": "Fantasy"
+            },
+            {
+              "id": "18580615011",
+              "name": "Epic"
+            }
+          ],
+          "root": "Genres"
+        },
+        {
+          "ladder": [
+            {
+              "id": "18580606011",
+              "name": "Science Fiction & Fantasy"
+            },
+            {
+              "id": "18580628011",
+              "name": "Science Fiction"
+            },
+            {
+              "id": "18580643011",
+              "name": "Post-Apocalyptic"
+            }
+          ],
+          "root": "Genres"
+        }
+      ],
+      "content_delivery_type": "MultiPartBook",
+      "content_type": "Product",
+      "format_type": "unabridged",
+      "has_children": true,
+      "is_adult_product": false,
+      "is_listenable": true,
+      "is_purchasability_suppressed": false,
+      "is_vvab": false,
+      "issue_date": "2020-07-23",
+      "language": "spanish",
+      "merchandising_summary": "<p>Durante mil años han caído las cenizas y nada florece. Durante mil años los skaa han sido esclavizados y viven sumidos en un miedo inevitable. Durante mil años el Lord Legislador reina con un poder absoluto gracias al terror, a sus poderes y a su inmortalidad....</p>",
+      "narrators": [
+        {
+          "name": "Francesc Belda"
+        }
+      ],
+      "product_images": {
+        "500": "https://m.media-amazon.com/images/I/51sxZZxGHkL._SL500_.jpg"
+      },
+      "publication_datetime": "2020-07-23T07:00:00Z",
+      "publication_name": "The Cosmere (Spanish Edition)",
+      "publisher_name": "Penguin Random House Grupo Editorial",
+      "publisher_summary": "<p><b>Inicia la saga «Nacidos de la Bruma [Mistborn]» escuchando </b><b><i>El imperio final</i></b><b>, obra imprescindible del Cosmere, el universo destinado a dar forma a la serie más extensa y fascinante jamás escrita en el ámbito de la fantasía épica.</b></p> <p>Durante mil años han caído las cenizas y nada florece. Durante mil años los skaa han sido esclavizados y viven sumidos en un miedo inevitable. Durante mil años el Lord Legislador reina con un poder absoluto gracias al terror, a sus poderes y a su inmortalidad. Le ayudan \"obligadores\" e \"inquisidores\", junto a la poderosa magia de la alomancia. Pero los nobles a menudo han tenido trato sexual con jóvenes skaa y, aunque la ley lo prohíbe, algunos de sus bastardos han sobrevivido y heredado los poderes alománticos: son los \"nacidos de la bruma\" (mistborn).</p> <p>Ahora, Kelsier, el \"superviviente\", el único que ha logrado huir de los Pozos de Hathsin, ha encontrado a Vin, una pobre chica skaa con mucha suerte... Tal vez los dos, unidos a la rebelión que los skaa intentan desde hace mil años, logren cambiar el mundo y la atroz dominación del Lord Legislador.</p> <p><b>Desde 2006, y en solo diez años, Brandon Sanderson se ha consolidado como el gran renovador de la fantasía del siglo XXI y el autor del género más prolífico del mundo. Ha logrado ganarse a ocho millones de lectores, ser publicado en treinta países y convertirse en el heredero de todo un género. Escucha ahora su novela en audiolibro.</b></p> <p><b>Reseñas:</b><br /> «Sanderson es un escritor brillante.»<br /> Patrick Rothfuss</p> <p>«El renovador de la fantasía, el gran reinventor de la magia.»<br /> Ricard Ruiz Garzón, <i>Els Matins de TV3</i></p> <p>«Sanderson es una bomba a punto de explotar.»<br /> Ernest Alós, <i>El Periódico de Catalunya</i></p> <p>«Si te gusta la literatura fantástica, lee a Brandon Sanderson.»<br /> Chicote</p> <p>«Hace tiempo que George R.R. Martin tiene heredero.»<br /> Javier Blánquez, <i>El Mundo</i></p> <p><b>Please note: This audiobook is in Spanish.</b></p>",
+      "release_date": "2020-07-23",
+      "runtime_length_min": 1461,
+      "series": [
+        {
+          "asin": "B08D8QDQYL",
+          "sequence": "1",
+          "title": "Trilogía Original Mistborn",
+          "url": "/pd/Nacidos-de-la-bruma-Mistborn-Audiobook/B08D8QDQYL"
+        },
+        {
+          "asin": "B08CZVNZWZ",
+          "sequence": "",
+          "title": "The Cosmere (Spanish Edition)",
+          "url": "/pd/Cosmere-Spanish-Edition-Audiobook/B08CZVNZWZ"
+        }
+      ],
+      "sku": "BK_RHSP_002054",
+      "sku_lite": "BK_RHSP_002054",
+      "social_media_images": {
+        "facebook": "https://m.media-amazon.com/images/I/51sxZZxGHkL._SL10_UR1600,800_CR200,50,1200,630_CLa%7C1200,630%7C51sxZZxGHkL.jpg%7C0,0,1200,630+82,82,465,465_PJAdblSocialShare-Gradientoverlay-largeasin-0to70,TopLeft,0,0_PJAdblSocialShare-AudibleLogo-Large,TopLeft,600,270_OU01_ZBLISTENING%20ON,617,216,52,500,AudibleSansMd,30,255,255,255.jpg",
+        "ig_bg": "https://m.media-amazon.com/images/I/51sxZZxGHkL._SL200_BL80_UR1080,2160.jpg",
+        "ig_static_with_bg": "https://m.media-amazon.com/images/I/51sxZZxGHkL._SL200_BL80_UR1080,2160_CLa%7C1080,2160%7C51sxZZxGHkL.jpg%7C0,0,1080,2160+288,614,500,500_PJAdblSocialShare-Gradientoverlay-Radial,TopLeft,0,0_PJAdblSocialShare-AudibleLogo-Small,TopLeft,290,461_ZBLISTENING%20ON,290,410,52,500,AudibleSansMd,34,255,255,255_ZBNacidos%20de%20la%20bruma%20%28Tr...,290,1183,52,500,AudibleSansSm,32,255,255,255_ZBBrandon%20Sanderson%252C%20Rafael%20...,290,1247,52,500,AudibleSansRg,28,255,255,255.jpg",
+        "ig_sticker": "https://m.media-amazon.com/images/I/71UyRin7-TL._CLa%7C614,913%7C51sxZZxGHkL.jpg%7C0,0,614,913+70,79,471,473_FMpng_PJAudible-logo-dk,BottomLeft,70,-100_ZANacidos%20de%20la%20b...,70,560,65,500,AudibleSansSm,42,54,54,54_ZAby%20Brandon%20Sanderson%252C...,70,640,52,517,AudibleSansRg,32,0,0,0.png",
+        "twitter": "https://m.media-amazon.com/images/I/51sxZZxGHkL._SL10_UR1600,800_CR200,50,1024,512_CLa%7C1024,512%7C51sxZZxGHkL.jpg%7C0,0,1024,512+67,67,376,376_PJAdblSocialShare-Gradientoverlay-twitter-largeasin-0to60,TopLeft,0,0_PJAdblSocialShare-AudibleLogo-Medium,TopLeft,490,223_OU01_ZBLISTENING%20ON,483,152,55,450,AudibleSansMd,32,255,255,255.jpg"
+      },
+      "subtitle": "El Imperio Final",
+      "thesaurus_subject_keywords": [
+        "literature-and-fiction"
+      ],
+      "title": "Nacidos de la bruma (Trilogía Original Mistborn 1)",
+      "voice_description": "Castilian Spanish"
+    },
+    {
+      "asin": "B004SOK2SE",
+      "asset_details": [],
+      "authors": [
+        {
+          "asin": "B001IGFHW6",
+          "name": "Brandon Sanderson"
+        }
+      ],
+      "available_codecs": [
+        {
+          "enhanced_codec": "LC_128_44100_stereo",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "aax_44_128"
+        },
+        {
+          "enhanced_codec": "LC_64_22050_stereo",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "aax_22_64"
+        },
+        {
+          "enhanced_codec": "LC_32_22050_stereo",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "aax_22_32"
+        },
+        {
+          "enhanced_codec": "LC_64_44100_stereo",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "aax_44_64"
+        },
+        {
+          "enhanced_codec": "aax",
+          "format": "Enhanced",
+          "is_kindle_enhanced": false,
+          "name": "aax"
+        }
+      ],
+      "category_ladders": [
+        {
+          "ladder": [
+            {
+              "id": "18580606011",
+              "name": "Science Fiction & Fantasy"
+            },
+            {
+              "id": "18580607011",
+              "name": "Fantasy"
+            },
+            {
+              "id": "18580615011",
+              "name": "Epic"
+            }
+          ],
+          "root": "Genres"
+        },
+        {
+          "ladder": [
+            {
+              "id": "18580606011",
+              "name": "Science Fiction & Fantasy"
+            },
+            {
+              "id": "18580607011",
+              "name": "Fantasy"
+            },
+            {
+              "id": "18580618011",
+              "name": "Historical"
+            }
+          ],
+          "root": "Genres"
+        }
+      ],
+      "content_delivery_type": "MultiPartBook",
+      "content_type": "Product",
+      "format_type": "unabridged",
+      "has_children": true,
+      "is_adult_product": false,
+      "is_listenable": true,
+      "is_purchasability_suppressed": false,
+      "is_vvab": false,
+      "issue_date": "2011-03-18",
+      "language": "english",
+      "merchandising_summary": "THE INTERNATIONAL PHENOMENON BEHIND THE COSMERE **** What if the Dark Lord won? A thousand years ago evil came to the land and has ruled with an iron hand ever since. The sun shines fitfully under clouds of ash that float down endlessly from the constant eruption of volcanoes. A dark lord rules...",
+      "narrators": [
+        {
+          "name": "Michael Kramer"
+        }
+      ],
+      "product_images": {
+        "500": "https://m.media-amazon.com/images/I/514AZpCQ4ML._SL500_.jpg"
+      },
+      "publication_datetime": "2011-03-18T00:00:00Z",
+      "publication_name": "The Mistborn Saga",
+      "publisher_name": "Gollancz",
+      "publisher_summary": "<b> THE INTERNATIONAL PHENOMENON BEHIND THE COSMERE </b><br /><br /> ****<br /> <br /><b> What if the Dark Lord won?</b><br /><br /> A thousand years ago evil came to the land and has ruled with an iron hand ever since. The sun shines fitfully under clouds of ash that float down endlessly from the constant eruption of volcanoes. A dark lord rules through the aristocratic families and ordinary folk are condemned to lives in servitude, sold as goods, labouring in the ash fields.<br /><br /> But now a troublemaker has arrived and there is rumour of revolt. A revolt that depends on a criminal no-one can trust and a young girl who must master Allomancy - the magic that lies in all metals.<br /><br /> ****<br /><br /> <b>FANTASY DOESN'T GET BETTER THAN SANDERSON:</b><br /><br /> 'Highly recommend to anyone hungry for a good read'<br /> <b>ROBIN HOBB</b><br /><br /> 'Epic in every sense'<br /> <b><i>GUARDIAN</i></b><br /><br /> 'Sanderson is the most immersive fantasy writer I've ever encountered'<br /> <b>BEN AARONOVITCH</b><br /><br /> 'All the explosive action any adventure fan could want'<br /> <b><i>LOCUS</i></b>",
+      "release_date": "2011-03-18",
+      "runtime_length_min": 1499,
+      "series": [
+        {
+          "asin": "B006K1P698",
+          "sequence": "1",
+          "title": "The Mistborn Saga",
+          "url": "/pd/The-Mistborn-Saga-Audiobook/B006K1P698"
+        },
+        {
+          "asin": "B0DMXTJ8WH",
+          "sequence": "",
+          "title": "The Cosmere",
+          "url": "/pd/The-Cosmere-Audiobook/B0DMXTJ8WH"
+        }
+      ],
+      "sku": "BK_ORIO_000391",
+      "sku_lite": "BK_ORIO_000391",
+      "social_media_images": {
+        "facebook": "https://m.media-amazon.com/images/I/514AZpCQ4ML._SL10_UR1600,800_CR200,50,1200,630_CLa%7C1200,630%7C514AZpCQ4ML.jpg%7C0,0,1200,630+82,82,465,465_PJAdblSocialShare-Gradientoverlay-largeasin-0to70,TopLeft,0,0_PJAdblSocialShare-AudibleLogo-Large,TopLeft,600,270_OU01_ZBLISTENING%20ON,617,216,52,500,AudibleSansMd,30,255,255,255.jpg",
+        "ig_bg": "https://m.media-amazon.com/images/I/514AZpCQ4ML._SL200_BL80_UR1080,2160.jpg",
+        "ig_static_with_bg": "https://m.media-amazon.com/images/I/514AZpCQ4ML._SL200_BL80_UR1080,2160_CLa%7C1080,2160%7C514AZpCQ4ML.jpg%7C0,0,1080,2160+288,614,500,500_PJAdblSocialShare-Gradientoverlay-Radial,TopLeft,0,0_PJAdblSocialShare-AudibleLogo-Small,TopLeft,290,461_ZBLISTENING%20ON,290,410,52,500,AudibleSansMd,34,255,255,255_ZBMistborn,290,1183,52,500,AudibleSansSm,32,255,255,255_ZBBrandon%20Sanderson,290,1247,52,500,AudibleSansRg,28,255,255,255.jpg",
+        "ig_sticker": "https://m.media-amazon.com/images/I/71UyRin7-TL._CLa%7C614,913%7C514AZpCQ4ML.jpg%7C0,0,614,913+70,79,471,473_FMpng_PJAudible-logo-dk,BottomLeft,70,-100_ZAMistborn,70,560,65,500,AudibleSansSm,42,54,54,54_ZAby%20Brandon%20Sanderson,70,640,52,517,AudibleSansRg,32,0,0,0.png",
+        "twitter": "https://m.media-amazon.com/images/I/514AZpCQ4ML._SL10_UR1600,800_CR200,50,1024,512_CLa%7C1024,512%7C514AZpCQ4ML.jpg%7C0,0,1024,512+67,67,376,376_PJAdblSocialShare-Gradientoverlay-twitter-largeasin-0to60,TopLeft,0,0_PJAdblSocialShare-AudibleLogo-Medium,TopLeft,490,223_OU01_ZBLISTENING%20ON,483,152,55,450,AudibleSansMd,32,255,255,255.jpg"
+      },
+      "subtitle": "Mistborn, Book 1",
+      "title": "Mistborn"
+    },
+    {
+      "asin": "B0GFB7JV5P",
+      "asset_details": [],
+      "authors": [
+        {
+          "name": "Briefly Summaries"
+        }
+      ],
+      "available_codecs": [
+        {
+          "enhanced_codec": "LC_64_44100_stereo",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "aax_44_64"
+        },
+        {
+          "enhanced_codec": "LC_64_22050_stereo",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "aax_22_64"
+        },
+        {
+          "enhanced_codec": "LC_128_44100_stereo",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "aax_44_128"
+        },
+        {
+          "enhanced_codec": "LC_32_22050_stereo",
+          "format": "Enhanced",
+          "is_kindle_enhanced": true,
+          "name": "aax_22_32"
+        },
+        {
+          "enhanced_codec": "aax",
+          "format": "Enhanced",
+          "is_kindle_enhanced": false,
+          "name": "aax"
+        }
+      ],
+      "category_ladders": [],
+      "content_delivery_type": "SinglePartBook",
+      "content_type": "Product",
+      "format_type": "abridged",
+      "has_children": false,
+      "is_adult_product": false,
+      "is_listenable": true,
+      "is_purchasability_suppressed": false,
+      "is_vvab": false,
+      "issue_date": "2026-01-06",
+      "language": "english",
+      "merchandising_summary": "<p>This is a concise summary and analysis of <i>Mistborn</i> by Brandon Sanderson. It is not the original book and is not affiliated with or endorsed by Brandon Sanderson. Ideal for those seeking a quick and insightful overview.</p>",
+      "narrators": [
+        {
+          "name": "Bill Hathey"
+        }
+      ],
+      "product_images": {
+        "500": "https://m.media-amazon.com/images/I/51oIv0zH4rL._SL500_.jpg"
+      },
+      "publication_datetime": "2026-01-06T22:15:00Z",
+      "publisher_name": "Loudly",
+      "publisher_summary": "<p>This is a concise summary and analysis of <i>Mistborn</i> by Brandon Sanderson. It is not the original book and is not affiliated with or endorsed by Brandon Sanderson. Ideal for those seeking a quick and insightful overview.</p> <p>Step into a realm where ash rains from the sky, mists rule the night, and a seemingly immortal tyrant holds an entire empire in thrall. In <i>Mistborn: The Final Empire</i>, follow a daring band of rebels led by a charismatic mastermind who dares to dream of toppling the Lord Ruler—a being feared as a living god. Among them is Vin, a wary street survivor who discovers she wields rare and potent Mistborn abilities, allowing her to “burn” metals for astonishing feats of strength, agility, and subtle manipulation.</p> <p>This audiobook plunges you into the clandestine streets of Luthadel, where cunning heists and secret alliances intertwine with a revolutionary cause. Tensions mount as hidden talents awaken and friendships form under the constant threat of ruthless enforcers. </p> <p>Balancing high-stakes adventure with a poignant look at trust, loyalty, and the cost of freedom, <i>Mistborn: The Final Empire</i> offers a transformative tale of resilience and daring. Perfect for those who crave both immersive storytelling and motivational insight, this is a journey that proves even the darkest worlds can spark the brightest sparks of hope—and that a single inspired act can galvanize an entire people to break the chains of centuries-long oppression.</p>",
+      "release_date": "2026-01-06",
+      "runtime_length_min": 22,
+      "sku": "BK_COMM_019932",
+      "sku_lite": "BK_COMM_019932",
+      "social_media_images": {
+        "facebook": "https://m.media-amazon.com/images/I/51oIv0zH4rL._SL10_UR1600,800_CR200,50,1200,630_CLa%7C1200,630%7C51oIv0zH4rL.jpg%7C0,0,1200,630+82,82,465,465_PJAdblSocialShare-Gradientoverlay-largeasin-0to70,TopLeft,0,0_PJAdblSocialShare-AudibleLogo-Large,TopLeft,600,270_OU01_ZBLISTENING%20ON,617,216,52,500,AudibleSansMd,30,255,255,255.jpg",
+        "ig_bg": "https://m.media-amazon.com/images/I/51oIv0zH4rL._SL200_BL80_UR1080,2160.jpg",
+        "ig_static_with_bg": "https://m.media-amazon.com/images/I/51oIv0zH4rL._SL200_BL80_UR1080,2160_CLa%7C1080,2160%7C51oIv0zH4rL.jpg%7C0,0,1080,2160+288,614,500,500_PJAdblSocialShare-Gradientoverlay-Radial,TopLeft,0,0_PJAdblSocialShare-AudibleLogo-Small,TopLeft,290,461_ZBLISTENING%20ON,290,410,52,500,AudibleSansMd,34,255,255,255_ZBBook%20Summary%20%26%20Analysis...,290,1183,52,500,AudibleSansSm,32,255,255,255_ZBBriefly%20Summaries,290,1247,52,500,AudibleSansRg,28,255,255,255.jpg",
+        "ig_sticker": "https://m.media-amazon.com/images/I/71UyRin7-TL._CLa%7C614,913%7C51oIv0zH4rL.jpg%7C0,0,614,913+70,79,471,473_FMpng_PJAudible-logo-dk,BottomLeft,70,-100_ZABook%20Summary%20%26%20...,70,560,65,500,AudibleSansSm,42,54,54,54_ZAby%20Briefly%20Summaries,70,640,52,517,AudibleSansRg,32,0,0,0.png",
+        "twitter": "https://m.media-amazon.com/images/I/51oIv0zH4rL._SL10_UR1600,800_CR200,50,1024,512_CLa%7C1024,512%7C51oIv0zH4rL.jpg%7C0,0,1024,512+67,67,376,376_PJAdblSocialShare-Gradientoverlay-twitter-largeasin-0to60,TopLeft,0,0_PJAdblSocialShare-AudibleLogo-Medium,TopLeft,490,223_OU01_ZBLISTENING%20ON,483,152,55,450,AudibleSansMd,32,255,255,255.jpg"
+      },
+      "title": "Book Summary & Analysis of Mistborn: The Final Empire"
+    }
+  ],
+  "response_groups": [
+    "product_desc",
+    "always-returned",
+    "product_extended_attrs",
+    "contributors",
+    "series",
+    "media",
+    "category_ladders",
+    "product_attrs"
+  ],
+  "total_results": 4
+}

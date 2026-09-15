@@ -66,6 +66,9 @@ describe('LibraryImportFooter', () => {
         format: 'MP3',
         fileCount: 1,
         selectedMatch: { title: 'Book 1', authors: [] } as unknown as SearchResult,
+        matchState: 'matched',
+        matchIssue: 'none',
+        candidates: [],
         hasSearched: true,
         isSearching: false,
         selected: true,
@@ -80,6 +83,9 @@ describe('LibraryImportFooter', () => {
         format: 'MP3',
         fileCount: 1,
         selectedMatch: { title: 'Book 2', authors: [] } as unknown as SearchResult,
+        matchState: 'matched',
+        matchIssue: 'none',
+        candidates: [],
         hasSearched: true,
         isSearching: false,
         selected: true,
@@ -196,5 +202,56 @@ describe('LibraryImportFooter', () => {
     store.action = 'hardlink/copy'
     await wrapper.vm.$nextTick()
     expect(wrapper.find('[data-testid="move-policy-warning"]').exists()).toBe(false)
+  })
+
+  it('retries unmatched rows with the chosen strategy', async () => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    const store = useLibraryImportStore()
+    const retryUnmatched = vi.spyOn(store, 'retryUnmatched').mockImplementation(() => {})
+
+    store.items = {
+      missing: {
+        id: 'missing',
+        fullPath: 'C:\\incoming\\Missing.mp3',
+        sourceFiles: ['C:\\incoming\\Missing.mp3'],
+        folderPath: 'C:\\incoming',
+        relativePath: 'Missing',
+        folderName: 'Missing',
+        format: 'MP3',
+        fileCount: 1,
+        selectedMatch: null,
+        matchState: 'unmatched',
+        matchIssue: 'no-results',
+        candidates: [],
+        hasSearched: true,
+        isSearching: false,
+        selected: false,
+      },
+    }
+
+    const wrapper = mount(LibraryImportFooter, {
+      props: { folders: [{ id: 1, path: 'D:\\library' }] as unknown as RootFolder[] },
+      global: { plugins: [pinia] },
+    })
+
+    await wrapper.get('[data-testid="retry-unmatched-toggle"]').trigger('click')
+    await wrapper.get('[data-testid="retry-unmatched-menu"] [data-strategy="folder"]').trigger('click')
+
+    expect(retryUnmatched).toHaveBeenCalledWith('folder')
+  })
+
+  it('shows why matching paused', async () => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    const store = useLibraryImportStore()
+    store.queuePausedReason = 'Audible rate limited the search, retry in 30s. Matching paused.'
+
+    const wrapper = mount(LibraryImportFooter, {
+      props: { folders: [{ id: 1, path: 'D:\\library' }] as unknown as RootFolder[] },
+      global: { plugins: [pinia] },
+    })
+
+    expect(wrapper.get('[data-testid="queue-paused"]').text()).toContain('rate limited')
   })
 })

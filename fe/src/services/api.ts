@@ -573,6 +573,7 @@ class ApiService {
     language?: string
     pagination?: { page?: number; limit?: number }
     cap?: number
+    durationSeconds?: number
   }): Promise<SearchResult[]> {
     const body: Record<string, unknown> = { mode: 'Advanced' }
     const hasAsin = !!params.asin
@@ -589,6 +590,9 @@ class ApiService {
     if (params.language) (body as Record<string, unknown>).language = params.language
     if (params.pagination) (body as Record<string, unknown>).pagination = params.pagination
     if (typeof params.cap === 'number') (body as Record<string, unknown>).cap = params.cap
+    if (typeof params.durationSeconds === 'number' && params.durationSeconds > 0) {
+      ;(body as Record<string, unknown>).durationSeconds = params.durationSeconds
+    }
     const resp = await this.request<SearchResult[] | { results?: SearchResult[] } | null>(
       '/search',
       { method: 'POST', body: JSON.stringify(body) },

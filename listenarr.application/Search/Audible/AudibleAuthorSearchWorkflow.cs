@@ -14,10 +14,17 @@ namespace Listenarr.Application.Search.Audible
 {
     public sealed class AudibleAuthorSearchWorkflow
     {
+        private const int KeywordSearchLimit = 50;
+        private const int AuthorCatalogueLimit = 500;
+
         private readonly AudibleService _audibleService;
         private readonly AudibleAuthorPageCollector _authorPageCollector;
         private readonly MetadataConverters _metadataConverters;
         private readonly ILogger<AudibleAuthorSearchWorkflow> _logger;
+
+        // The workflow is registered scoped, so this only ever caches within one search request.
+        private readonly Dictionary<string, List<AudibleSearchResult>> _authorCatalogueCache =
+            new(StringComparer.OrdinalIgnoreCase);
 
         public AudibleAuthorSearchWorkflow(
             AudibleService audibleService,
@@ -116,44 +123,42 @@ namespace Listenarr.Application.Search.Audible
             string region,
             string? language)
         {
-            try { _logger.LogInformation("Entering AUTHOR_TITLE branch: author='{Author}', title='{Title}', isbn='{Isbn}'", author, title, isbn); }
-            catch (Exception caughtEx) when (caughtEx is not OperationCanceledException && caughtEx is not OutOfMemoryException && caughtEx is not StackOverflowException)
+            _logger.LogInformation("Entering AUTHOR_TITLE branch: author='{Author}', title='{Title}', isbn='{Isbn}'", author, title, isbn);
+
+            // Audible's keyword index knows aliases the catalogue records do not: the words
+            // "Final Empire" appear nowhere in B004SOK2SE, yet a keyword search for
+            // "Brandon Sanderson Mistborn The Final Empire" returns it. One or two requests,
+            // against the 100-plus the author catalogue walk costs.
+            var aggregated = await SearchByKeywordsAsync(author, title, region, language);
+            var usedKeywordSearch = aggregated.Count > 0;
+
+            if (!usedKeywordSearch)
             {
-                System.Diagnostics.Debug.WriteLine("Suppressed non-fatal exception in catch block.");
+                aggregated = await CollectAuthorCatalogueAsync(author, candidateLimit, region, language);
             }
 
-            var aggregated = await _authorPageCollector.CollectAsync(
-                author,
-                candidateLimit,
-                region,
-                language,
-                "AUTHOR_TITLE");
-
-            if (aggregated?.Any() != true)
+            if (aggregated.Count == 0)
             {
                 return null;
             }
 
             var deduplicated = DeduplicateByAsin(aggregated);
             _logger.LogInformation(
-                "Deduplicated AUTHOR_TITLE results for '{Author}': {OriginalCount} -> {DeduplicatedCount}",
+                "Deduplicated AUTHOR_TITLE results for '{Author}': {OriginalCount} -> {DeduplicatedCount} (keywordSearch={UsedKeywordSearch})",
                 author,
                 aggregated.Count,
-                deduplicated.Count);
-
-            try { _logger.LogInformation("Audible author lookup returned {Count} aggregated results for author '{Author}'", deduplicated.Count, author); }
-            catch (Exception caughtEx) when (caughtEx is not OperationCanceledException && caughtEx is not OutOfMemoryException && caughtEx is not StackOverflowException)
-            {
-                System.Diagnostics.Debug.WriteLine("Suppressed non-fatal exception in catch block.");
-            }
+                deduplicated.Count,
+                usedKeywordSearch);
 
             var authorFiltered = ApplyStrictLanguageFilter(deduplicated, language);
 
-            if (!string.IsNullOrEmpty(title))
+            // The keyword search has already done the title work, and it knows aliases this
+            // filter cannot. Only the catalogue walk, which returns everything the author wrote,
+            // needs a title filter, and even then a tolerant one: its job is to drop obvious
+            // non-matches, not to demand the detected text appear verbatim.
+            if (!usedKeywordSearch && !string.IsNullOrEmpty(title))
             {
-                authorFiltered = authorFiltered.Where(b =>
-                    (!string.IsNullOrWhiteSpace(b.Title) && b.Title.IndexOf(title, StringComparison.OrdinalIgnoreCase) >= 0) ||
-                    (!string.IsNullOrWhiteSpace(b.Subtitle) && b.Subtitle.IndexOf(title, StringComparison.OrdinalIgnoreCase) >= 0));
+                authorFiltered = authorFiltered.Where(b => LibraryMatchScorer.TitlesPlausiblyMatch(title, ToScoreCandidate(b)));
             }
 
             var detailedMetaByAsin = new Dictionary<string, AudibleBookResponse>(StringComparer.OrdinalIgnoreCase);
@@ -162,11 +167,7 @@ namespace Listenarr.Application.Search.Audible
                 authorFiltered = await FilterByIsbnAsync(aggregated, authorFiltered, isbn, candidateLimit, region, language, detailedMetaByAsin);
             }
 
-            try { _logger.LogInformation("[DBG] authorFiltered count after language/title/isbn filtering: {Count}", authorFiltered.Count()); }
-            catch (Exception caughtEx) when (caughtEx is not OperationCanceledException && caughtEx is not OutOfMemoryException && caughtEx is not StackOverflowException)
-            {
-                System.Diagnostics.Debug.WriteLine("Suppressed non-fatal exception in catch block.");
-            }
+            _logger.LogDebug("authorFiltered count after language/title/isbn filtering: {Count}", authorFiltered.Count());
 
             var converted = await AudibleSearchResultMapper.ConvertToSearchResultsAsync(
                 authorFiltered,
@@ -177,6 +178,109 @@ namespace Listenarr.Application.Search.Audible
                 continueOnConversionError: true);
 
             return converted.Any() ? SearchResultConverters.ToMetadataList(converted) : null;
+        }
+
+        /// <summary>
+        /// One keyword search for author plus title, then title alone, keeping only candidates
+        /// the requested author actually wrote.
+        /// </summary>
+        private async Task<List<AudibleSearchResult>> SearchByKeywordsAsync(
+            string author,
+            string? title,
+            string region,
+            string? language)
+        {
+            var queries = new List<string>();
+            if (!string.IsNullOrWhiteSpace(title))
+            {
+                queries.Add($"{author} {title}".Trim());
+                queries.Add(title.Trim());
+            }
+            else
+            {
+                queries.Add(author.Trim());
+            }
+
+            foreach (var query in queries.Where(q => !string.IsNullOrWhiteSpace(q)).Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                var response = await _audibleService.SearchBooksAsync(query, 1, KeywordSearchLimit, region, language);
+                AudibleSearchFailureGuard.ThrowIfUnavailable(response, query);
+                var results = response?.Results;
+                if (results == null || results.Count == 0)
+                {
+                    continue;
+                }
+
+                var byAuthor = results
+                    .Where(result => AudibleAuthorCatalogMatcher.MatchesTarget(result, author, authorAsin: null))
+                    .ToList();
+
+                _logger.LogInformation(
+                    "Audible keyword search '{Query}' returned {Total} result(s), {Kept} by '{Author}'",
+                    query,
+                    results.Count,
+                    byAuthor.Count,
+                    author);
+
+                if (byAuthor.Count > 0)
+                {
+                    return byAuthor;
+                }
+            }
+
+            return new List<AudibleSearchResult>();
+        }
+
+        /// <summary>
+        /// Last resort: the author's whole catalogue. Fetched once per author for the lifetime of
+        /// this scoped workflow, in a single call rather than paged ten at a time.
+        /// </summary>
+        private async Task<List<AudibleSearchResult>> CollectAuthorCatalogueAsync(
+            string author,
+            int candidateLimit,
+            string region,
+            string? language)
+        {
+            var cacheKey = $"{author}|{region}|{language}";
+            if (_authorCatalogueCache.TryGetValue(cacheKey, out var cached))
+            {
+                _logger.LogDebug("Reusing cached Audible catalogue for '{Author}' ({Count} title(s))", author, cached.Count);
+                return cached;
+            }
+
+            _logger.LogInformation("Keyword search found nothing for '{Author}'; walking the author catalogue", author);
+
+            List<AudibleSearchResult> catalogue;
+            var authorAsin = (await _audibleService.LookupAuthorAsync(author, region))?.Asin;
+            if (!string.IsNullOrWhiteSpace(authorAsin))
+            {
+                var response = await _audibleService.GetAllBooksByAuthorAsync(author, authorAsin, AuthorCatalogueLimit, region, language);
+                catalogue = response?.Results?.ToList() ?? new List<AudibleSearchResult>();
+            }
+            else
+            {
+                catalogue = await _authorPageCollector.CollectAsync(author, candidateLimit, region, language, "AUTHOR_TITLE");
+            }
+
+            _authorCatalogueCache[cacheKey] = catalogue;
+            return catalogue;
+        }
+
+        private static MatchScoreCandidate ToScoreCandidate(AudibleSearchResult result)
+        {
+            var series = result.Series?.FirstOrDefault();
+            return new MatchScoreCandidate(
+                Title: result.Title,
+                Subtitle: result.Subtitle,
+                Authors: (result.Authors ?? new List<AudibleAuthor>())
+                    .Select(author => author?.Name ?? string.Empty)
+                    .Where(name => !string.IsNullOrWhiteSpace(name))
+                    .ToList(),
+                SeriesName: series?.Name,
+                SeriesPosition: series?.Position,
+                RuntimeMinutes: result.RuntimeLengthMin ?? result.LengthMinutes ?? result.RuntimeMinutes,
+                Language: result.Language,
+                FormatType: result.BookFormat);
         }
 
         private async Task<IEnumerable<AudibleSearchResult>> FilterByIsbnAsync(

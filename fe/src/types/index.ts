@@ -26,6 +26,11 @@ export interface BaseSearchResult {
   publishedDate: string
   format: string
   score?: number
+  // Confidence, 0 to 1, that this result is the book the request described. Only present when
+  // the request carried a title to score against.
+  matchScore?: number
+  // Short notes behind matchScore, e.g. "author matches", "runtime disagrees (329 min vs 1499 min)"
+  matchReasons?: string[]
 }
 
 export interface OpenLibraryBook {
@@ -71,7 +76,9 @@ export interface MetadataSearchResult extends BaseSearchResult {
   narrator?: string
   imageUrl?: string
   asin?: string
-  isbn?: string
+  // The backend serialises Audible's ISBN as a string but binds List<string> on the way back in,
+  // so both shapes are legal here.
+  isbn?: string | string[]
   series?: string
   seriesNumber?: string
   seriesAsin?: string
@@ -116,7 +123,9 @@ export interface SearchResult extends BaseSearchResult {
   narrator?: string
   imageUrl?: string
   asin?: string
-  isbn?: string
+  // The backend serialises Audible's ISBN as a string but binds List<string> on the way back in,
+  // so both shapes are legal here.
+  isbn?: string | string[]
   series?: string
   seriesNumber?: string
   seriesAsin?: string

@@ -9,6 +9,23 @@ namespace Listenarr.Infrastructure.Library.Scanning
 {
     public partial class UnmatchedScanProcessor
     {
+        // "01 - ", "Track 01 - ", "1. "
+        private static readonly Regex LeadingTrackNumberPattern = new(
+            @"^(track\s*)?\d+[\s\-_\.]+",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+        // "- Part 1", "CD2", "Disc 2", "pt00"
+        private static readonly Regex TrailingPartKeywordPattern = new(
+            @"[\s\-_]*(part|cd|disc|chapter|pt)\s*\d+$",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+        // "The Hobbit - 01", "The Hobbit 30"
+        private static readonly Regex TrailingBareNumberPattern = new(
+            @"^(?<core>.*?)[\s\-_\.]+(?<number>\d+)$",
+            RegexOptions.Compiled);
+
+        private static readonly string[] SingleBookContainerExtensions = { ".m4b" };
+
         internal static List<List<string>> BuildGroupedFilesForFolder(
             IEnumerable<string> files,
             string folderPath,
@@ -25,13 +42,16 @@ namespace Listenarr.Infrastructure.Library.Scanning
                 return new List<List<string>> { allFiles };
             }
 
+            var directoryIsSingleRun = IsSinglePartedBookDirectory(allFiles);
+
             if (embeddedTagsByFile != null)
             {
                 var metadataAwareGroups = BuildMetadataAwareGroups(
                     allFiles,
                     folderPath,
                     semantics,
-                    embeddedTagsByFile);
+                    embeddedTagsByFile,
+                    directoryIsSingleRun);
                 if (metadataAwareGroups.Count > 0)
                 {
                     return metadataAwareGroups;
@@ -45,7 +65,8 @@ namespace Listenarr.Infrastructure.Library.Scanning
             IReadOnlyCollection<string> files,
             string folderPath,
             FileSystemPathSemantics semantics,
-            IReadOnlyDictionary<string, PathParsedMetadata> embeddedTagsByFile)
+            IReadOnlyDictionary<string, PathParsedMetadata> embeddedTagsByFile,
+            bool directoryIsSingleRun)
         {
             var folderKey = NormalizeGroupKey(Path.GetFileName(folderPath));
             var candidates = files
@@ -82,14 +103,26 @@ namespace Listenarr.Infrastructure.Library.Scanning
 
             foreach (var candidate in candidates.Where(candidate => !attachedFiles.Contains(candidate.FilePath)))
             {
+                // Every candidate reaching this loop is untagged: the loop above attached
+                // all candidates that carried a title. A blank author used to make such a
+                // file "compatible" with every group, which silently glued an unrelated
+                // file onto whichever book happened to be the only one in the folder.
+                // Require a positive signal that the file belongs to that book.
+                var hasPositiveSignal = candidate.IsAncillary
+                    || directoryIsSingleRun
+                    || string.IsNullOrWhiteSpace(candidate.Stem)
+                    || string.Equals(candidate.Stem, folderKey, StringComparison.OrdinalIgnoreCase);
+                if (!hasPositiveSignal)
+                {
+                    continue;
+                }
+
                 var compatibleGroups = metadataGroups
-                    .Where(group => group.Any(existing => AuthorsCompatible(existing.AuthorKey, candidate.AuthorKey)))
+                    .Where(group => group.All(existing =>
+                        CompareAuthors(existing.AuthorKey, candidate.AuthorKey) != AuthorCompatibility.Conflict))
                     .ToList();
 
-                if (compatibleGroups.Count == 1
-                    && (candidate.IsAncillary
-                        || string.IsNullOrWhiteSpace(candidate.Stem)
-                        || string.Equals(candidate.Stem, folderKey, StringComparison.OrdinalIgnoreCase)))
+                if (compatibleGroups.Count == 1)
                 {
                     compatibleGroups[0].Add(candidate);
                     attachedFiles.Add(candidate.FilePath);
@@ -115,6 +148,14 @@ namespace Listenarr.Infrastructure.Library.Scanning
 
         private static List<List<string>> BuildStemGroups(IReadOnlyCollection<string> allFiles, string folderPath)
         {
+            // A directory whose filenames read as one ordered run of parts is one book,
+            // however many files it holds. Without this, "The Hobbit - 01.mp3" through
+            // "- 30.mp3" produced thirty stems and therefore thirty separate books.
+            if (IsSinglePartedBookDirectory(allFiles))
+            {
+                return new List<List<string>> { allFiles.ToList() };
+            }
+
             var byTitle = allFiles
                 .GroupBy(f => ExtractTitleStem(f, folderPath), StringComparer.OrdinalIgnoreCase)
                 .Select(g => new StemGroup(g.Key, g.ToList()))
@@ -152,243 +193,145 @@ namespace Listenarr.Infrastructure.Library.Scanning
                 stem,
                 IsAncillaryStem(stem),
                 FileUtils.NormalizeComparisonValue(tags?.Title),
+                StripParentheticalSuffix(tags?.Title),
                 FileUtils.NormalizeComparisonValue(tags?.Author));
+        }
+
+        /// <summary>
+        /// Normalized form of a title with one trailing parenthesised qualifier removed,
+        /// so "Elantris (Unabridged)" can still meet "Elantris". Returns empty when there
+        /// is no such suffix, which keeps the tolerance bounded to that one shape.
+        /// </summary>
+        private static string StripParentheticalSuffix(string? title)
+        {
+            if (string.IsNullOrWhiteSpace(title))
+            {
+                return string.Empty;
+            }
+
+            var stripped = Regex.Replace(title, @"\s*\([^()]*\)\s*$", string.Empty);
+            if (string.Equals(stripped, title, StringComparison.Ordinal))
+            {
+                return string.Empty;
+            }
+
+            return FileUtils.NormalizeComparisonValue(stripped);
         }
 
         private static bool TitlesAndAuthorsMatch(GroupCandidate left, GroupCandidate right)
         {
-            if (!FileUtils.ValuesOverlap(left.TitleKey, right.TitleKey))
+            return TitleKeysMatch(left, right)
+                && CompareAuthors(left.AuthorKey, right.AuthorKey) != AuthorCompatibility.Conflict;
+        }
+
+        /// <summary>
+        /// Exact normalized equality, plus the single bounded tolerance of a trailing
+        /// parenthesised qualifier. Substring containment used to be the test, which
+        /// merged "Wheel of Time 1" into "Wheel of Time 11".
+        /// </summary>
+        private static bool TitleKeysMatch(GroupCandidate left, GroupCandidate right)
+        {
+            if (string.IsNullOrWhiteSpace(left.TitleKey) || string.IsNullOrWhiteSpace(right.TitleKey))
             {
                 return false;
             }
 
-            return AuthorsCompatible(left.AuthorKey, right.AuthorKey);
-        }
-
-        private static bool AuthorsCompatible(string? leftAuthor, string? rightAuthor)
-        {
-            if (string.IsNullOrWhiteSpace(leftAuthor) || string.IsNullOrWhiteSpace(rightAuthor))
+            if (string.Equals(left.TitleKey, right.TitleKey, StringComparison.Ordinal))
             {
                 return true;
             }
 
-            return FileUtils.ValuesOverlap(leftAuthor, rightAuthor);
+            return KeysEqual(left.TitleKeyWithoutSuffix, right.TitleKey)
+                || KeysEqual(left.TitleKey, right.TitleKeyWithoutSuffix)
+                || KeysEqual(left.TitleKeyWithoutSuffix, right.TitleKeyWithoutSuffix);
         }
 
-        private static async Task<IReadOnlyDictionary<string, PathParsedMetadata>> ReadEmbeddedTagsForFilesAsync(
-            IEnumerable<string> files,
-            string ffprobePath,
-            FileSystemPathSemantics semantics,
-            IReadOnlyDictionary<string, string> fileObjectIdentities,
-            CancellationToken ct)
+        private static bool KeysEqual(string left, string right) =>
+            !string.IsNullOrWhiteSpace(left)
+            && !string.IsNullOrWhiteSpace(right)
+            && string.Equals(left, right, StringComparison.Ordinal);
+
+        private enum AuthorCompatibility
         {
-            var result = new Dictionary<string, PathParsedMetadata>(semantics.Comparer);
-            foreach (var file in files)
-            {
-                var canonicalFile = FileSystemPathIdentity.Canonicalize(
-                    file,
-                    semantics.Syntax);
-                if (!fileObjectIdentities.TryGetValue(
-                        canonicalFile,
-                        out var expectedPhysicalObjectIdentity))
-                {
-                    throw new InvalidOperationException(
-                        "The unmatched metadata candidate lacks its enumerated physical generation.");
-                }
-
-                using var lease = PinnedAudiobookFileRegistrationLease.Open(
-                    file,
-                    expectedPhysicalObjectIdentity);
-                result[file] = await PathMetadataParser.ReadEmbeddedTagsAsync(
-                    lease.MetadataPath,
-                    ffprobePath,
-                    ct);
-                if (!lease.MatchesCurrentPublication())
-                {
-                    throw new InvalidOperationException(
-                        "The unmatched metadata candidate changed during embedded-tag extraction.");
-                }
-            }
-
-            return result;
+            Match,
+            Unknown,
+            Conflict
         }
 
-        internal static async Task ApplyPinnedFolderMetadataAsync(
-            PathParsedMetadata target,
-            string bookFolder,
-            ScanFileDiscovery.EnumerationResult enumeration,
-            FileSystemPathSemantics semantics,
-            CancellationToken ct)
+        /// <summary>
+        /// A blank author is unknown, not compatible. Callers that used to read "true"
+        /// here treated "no information" as "same author".
+        /// </summary>
+        private static AuthorCompatibility CompareAuthors(string? leftAuthor, string? rightAuthor)
         {
-            ArgumentNullException.ThrowIfNull(target);
-            if (string.IsNullOrWhiteSpace(bookFolder))
+            if (string.IsNullOrWhiteSpace(leftAuthor) || string.IsNullOrWhiteSpace(rightAuthor))
             {
-                return;
+                return AuthorCompatibility.Unknown;
             }
 
-            var canonicalFolder = FileSystemPathIdentity.Canonicalize(
-                bookFolder,
-                semantics.Syntax);
-            if (!enumeration.DirectoryObjectIdentities.TryGetValue(
-                    canonicalFolder,
-                    out var expectedDirectoryIdentity))
-            {
-                throw new InvalidOperationException(
-                    "The unmatched metadata folder lacks its authoritative enumeration proof.");
-            }
-
-            using var folder = PinnedDirectoryCreation.OpenPinnedHierarchyNoFollow(
-                bookFolder,
-                createMissing: false);
-            if (!folder.MatchesDirectoryObjectIdentity(expectedDirectoryIdentity))
-            {
-                throw new InvalidOperationException(
-                    "The unmatched metadata folder changed after filesystem enumeration.");
-            }
-            var expectedNamespaceChangeToken = folder.GetNamespaceChangeToken();
-            EnsurePinnedFolderMatches(
-                folder,
-                expectedDirectoryIdentity,
-                expectedNamespaceChangeToken);
-
-            var description = await TryReadPinnedTextFileAsync(
-                folder,
-                "desc.txt",
-                maxCharacters: 2000,
-                ct);
-            EnsurePinnedFolderMatches(
-                folder,
-                expectedDirectoryIdentity,
-                expectedNamespaceChangeToken);
-            if (!string.IsNullOrWhiteSpace(description))
-            {
-                target.Description = description.Trim();
-            }
-
-            var narrator = await TryReadPinnedTextFileAsync(
-                folder,
-                "reader.txt",
-                maxCharacters: 512,
-                ct);
-            EnsurePinnedFolderMatches(
-                folder,
-                expectedDirectoryIdentity,
-                expectedNamespaceChangeToken);
-            if (!string.IsNullOrWhiteSpace(narrator))
-            {
-                target.Narrator = narrator.Trim();
-            }
-
-            string[] visibleFiles;
-            try
-            {
-                visibleFiles = Directory.EnumerateFiles(folder.FullPath)
-                    .Select(Path.GetFileName)
-                    .Where(name => !string.IsNullOrWhiteSpace(name))
-                    .Cast<string>()
-                    .ToArray();
-            }
-            catch (Exception exception) when (exception is
-                IOException or UnauthorizedAccessException
-                    or System.ComponentModel.Win32Exception)
-            {
-                throw new InvalidOperationException(
-                    "The unmatched metadata folder became unavailable while locating its cover image.",
-                    exception);
-            }
-            EnsurePinnedFolderMatches(
-                folder,
-                expectedDirectoryIdentity,
-                expectedNamespaceChangeToken);
-
-            foreach (var fileName in visibleFiles)
-            {
-                if (!Path.GetFileNameWithoutExtension(fileName)
-                        .Contains("cover", StringComparison.OrdinalIgnoreCase)
-                    || !new[] { ".jpg", ".jpeg", ".png", ".webp" }
-                        .Contains(
-                            Path.GetExtension(fileName),
-                            StringComparer.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                using var cover = folder.TryOpenExistingFile(
-                    fileName,
-                    requireDeleteAccess: false);
-                if (cover == null || !cover.IsRegularFile() || !cover.VisiblePathMatches())
-                {
-                    continue;
-                }
-
-                EnsurePinnedFolderMatches(
-                    folder,
-                    expectedDirectoryIdentity,
-                    expectedNamespaceChangeToken);
-                target.CoverPath = cover.FullPath;
-                break;
-            }
+            return FileUtils.ValuesOverlap(leftAuthor, rightAuthor)
+                ? AuthorCompatibility.Match
+                : AuthorCompatibility.Conflict;
         }
 
-        private static async Task<string?> TryReadPinnedTextFileAsync(
-            PinnedDirectoryCreation.PinnedDirectoryAnchor folder,
-            string fileName,
-            int maxCharacters,
-            CancellationToken ct)
+        /// <summary>
+        /// True when every filename in the directory reads as one part of a single
+        /// ordered work: either they all carry a leading track number, or they all share
+        /// one stem and differ only by a trailing number. Single-file container formats
+        /// are excluded from the second rule, because "Mistborn 1.m4b" beside
+        /// "Mistborn 2.m4b" is a series sitting in one folder, not one book in two parts.
+        /// </summary>
+        private static bool IsSinglePartedBookDirectory(IReadOnlyCollection<string> files)
         {
-            using var file = folder.TryOpenExistingFile(
-                fileName,
-                requireDeleteAccess: false);
-            if (file == null || !file.IsRegularFile() || !file.VisiblePathMatches())
+            if (files.Count < 2)
             {
-                return null;
+                return false;
             }
 
-            await using var stream = file.OpenReadStream(
-                bufferSize: 4096,
-                asynchronous: false);
-            using var reader = new StreamReader(
-                stream,
-                detectEncodingFromByteOrderMarks: true,
-                leaveOpen: true);
-            var buffer = new char[maxCharacters + 1];
-            var totalRead = 0;
-            while (totalRead < buffer.Length)
+            var names = files
+                .Select(file => Path.GetFileNameWithoutExtension(file) ?? string.Empty)
+                .ToList();
+
+            if (names.All(name => LeadingTrackNumberPattern.IsMatch(name)))
             {
-                var read = await reader.ReadAsync(
-                    buffer.AsMemory(totalRead, buffer.Length - totalRead),
-                    ct);
-                if (read == 0)
+                return true;
+            }
+
+            if (files.All(file => SingleBookContainerExtensions.Contains(
+                    Path.GetExtension(file),
+                    StringComparer.OrdinalIgnoreCase)))
+            {
+                return false;
+            }
+
+            string? sharedCore = null;
+            var numbers = new List<int>(names.Count);
+            foreach (var name in names)
+            {
+                var withoutLeadingTrack = LeadingTrackNumberPattern.Replace(name, string.Empty);
+                var match = TrailingBareNumberPattern.Match(withoutLeadingTrack);
+                if (!match.Success)
                 {
-                    break;
+                    return false;
                 }
 
-                totalRead += read;
-            }
-            if (!file.VisiblePathMatches() || !folder.VisiblePathMatches())
-            {
-                throw new InvalidOperationException(
-                    "The unmatched metadata sidecar changed while it was being read.");
+                var core = NormalizeGroupKey(match.Groups["core"].Value);
+                if (core.Length == 0
+                    || !int.TryParse(match.Groups["number"].Value, out var number))
+                {
+                    return false;
+                }
+
+                sharedCore ??= core;
+                if (!string.Equals(sharedCore, core, StringComparison.Ordinal))
+                {
+                    return false;
+                }
+
+                numbers.Add(number);
             }
 
-            return new string(buffer, 0, Math.Min(totalRead, maxCharacters));
-        }
-
-        private static void EnsurePinnedFolderMatches(
-            PinnedDirectoryCreation.PinnedDirectoryAnchor folder,
-            string expectedDirectoryIdentity,
-            string expectedNamespaceChangeToken)
-        {
-            if (!folder.VisiblePathMatches()
-                || !folder.MatchesDirectoryObjectIdentity(expectedDirectoryIdentity)
-                || !string.Equals(
-                    folder.GetNamespaceChangeToken(),
-                    expectedNamespaceChangeToken,
-                    StringComparison.Ordinal))
-            {
-                throw new InvalidOperationException(
-                    "The unmatched metadata folder changed after filesystem enumeration.");
-            }
+            return numbers.Distinct().Count() == numbers.Count;
         }
 
         private static void ApplyEmbeddedTags(PathParsedMetadata target, PathParsedMetadata tags)
@@ -415,9 +358,9 @@ namespace Listenarr.Infrastructure.Library.Scanning
             var name = Path.GetFileNameWithoutExtension(filePath);
 
             // Strip leading track/disc number prefix: "01 - ", "Track 01 - ", "1. "
-            name = Regex.Replace(name, @"^(track\s*)?\d+[\s\-_\.]+", "", RegexOptions.IgnoreCase);
+            name = LeadingTrackNumberPattern.Replace(name, "");
             // Strip trailing Part/CD/Disc/Chapter number: "- Part 1", "CD2", "Disc 2", "pt00"
-            name = Regex.Replace(name, @"[\s\-_]*(part|cd|disc|chapter|pt)\s*\d+$", "", RegexOptions.IgnoreCase);
+            name = TrailingPartKeywordPattern.Replace(name, "");
             // Strip 4-digit years in parens: (2020), (2021)
             name = Regex.Replace(name, @"\s*\(\d{4}\)", "");
             // Strip square bracket content: [Series 3], [Chaos Seeds 1]

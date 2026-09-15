@@ -32,7 +32,32 @@ namespace Listenarr.Infrastructure.Metadata.Parsing
         public string? Narrator { get; set; }
         public string? CoverPath { get; set; }
         public string? Asin { get; set; }
+
+        /// <summary>
+        /// Total runtime in seconds when it could be read from the container.
+        /// </summary>
+        public double? DurationSeconds { get; set; }
+
+        /// <summary>
+        /// True when the strict "{Year} - {Title}" folder pattern matched. False means
+        /// the values came from the plain folder-name fallback.
+        /// </summary>
+        public bool ParsedFromPattern { get; set; }
+
         internal string? BookFolderPath { get; set; }
+    }
+
+    /// <summary>
+    /// Outcome of an ffprobe tag read. Distinguishes "probed, no tags" from
+    /// "the probe itself failed" so a caller can report the difference instead of
+    /// treating an unreadable file as an untagged one.
+    /// </summary>
+    public sealed class EmbeddedTagReadResult
+    {
+        public PathParsedMetadata Metadata { get; init; } = new();
+        public bool ProbeFailed { get; init; }
+        public int? ExitCode { get; init; }
+        public string? FailureSummary { get; init; }
     }
 
     /// <summary>
@@ -105,14 +130,34 @@ namespace Listenarr.Infrastructure.Metadata.Parsing
                 }
             }
 
-            if (bookFolderIndex < 0) return result;
+            if (bookFolderIndex >= 0)
+            {
+                // Parse year, title, series, seriesNumber from the matched folder
+                var m = BookFolderPattern.Match(folderParts[bookFolderIndex]);
+                result.ParsedFromPattern = true;
+                result.Year = m.Groups[1].Value;
+                result.Title = m.Groups[2].Value.Trim();
+                if (m.Groups[3].Success) result.Series = m.Groups[3].Value.Trim();
+                if (m.Groups[4].Success) result.SeriesNumber = m.Groups[4].Value.Trim();
+            }
+            else
+            {
+                // No "{Year} - {Title}" folder anywhere on the path. The overwhelmingly
+                // common layout is {Author}/{Book Title}/file, so treat the deepest
+                // non-disc folder as the book folder rather than returning nothing.
+                bookFolderIndex = folderParts.Length - 1;
+                while (bookFolderIndex > 0 && DiscFolderRules.IsDiscDirectory(folderParts[bookFolderIndex]))
+                {
+                    bookFolderIndex--;
+                }
 
-            // Parse year, title, series, seriesNumber from the matched folder
-            var m = BookFolderPattern.Match(folderParts[bookFolderIndex]);
-            result.Year = m.Groups[1].Value;
-            result.Title = m.Groups[2].Value.Trim();
-            if (m.Groups[3].Success) result.Series = m.Groups[3].Value.Trim();
-            if (m.Groups[4].Success) result.SeriesNumber = m.Groups[4].Value.Trim();
+                if (DiscFolderRules.IsDiscDirectory(folderParts[bookFolderIndex]))
+                {
+                    return result;
+                }
+
+                result.Title = folderParts[bookFolderIndex].Trim();
+            }
 
             // Assign Author and Series from path levels before the book folder
             if (bookFolderIndex == 1)
@@ -161,11 +206,10 @@ namespace Listenarr.Infrastructure.Metadata.Parsing
         /// Returns a PathParsedMetadata with only the fields found in the embedded tags.
         /// Non-tag fields (CoverPath) are not populated by this method.
         /// </summary>
-        public static async Task<PathParsedMetadata> ReadEmbeddedTagsAsync(
+        public static async Task<EmbeddedTagReadResult> ReadEmbeddedTagsAsync(
             string filePath, string ffprobePath, CancellationToken ct = default)
         {
             ct.ThrowIfCancellationRequested();
-            var result = new PathParsedMetadata();
             try
             {
                 var psi = new System.Diagnostics.ProcessStartInfo
@@ -176,27 +220,73 @@ namespace Listenarr.Infrastructure.Metadata.Parsing
                     UseShellExecute = false,
                     CreateNoWindow = true
                 };
-                psi.ArgumentList.Add("-v"); psi.ArgumentList.Add("quiet");
+                // "error" rather than "quiet" so a failed probe explains itself on stderr.
+                psi.ArgumentList.Add("-v"); psi.ArgumentList.Add("error");
                 psi.ArgumentList.Add("-print_format"); psi.ArgumentList.Add("json");
                 psi.ArgumentList.Add("-show_format");
                 psi.ArgumentList.Add(filePath);
 
                 using var proc = new System.Diagnostics.Process { StartInfo = psi };
                 proc.Start();
-                var stdout = await proc.StandardOutput.ReadToEndAsync(ct);
+                var stdoutTask = proc.StandardOutput.ReadToEndAsync(ct);
+                var stderrTask = proc.StandardError.ReadToEndAsync(ct);
+                var stdout = await stdoutTask;
+                var stderr = await stderrTask;
                 await proc.WaitForExitAsync(ct);
+                var exitCode = proc.ExitCode;
 
-                if (string.IsNullOrWhiteSpace(stdout)) return result;
+                if (exitCode != 0)
+                {
+                    return new EmbeddedTagReadResult
+                    {
+                        ProbeFailed = true,
+                        ExitCode = exitCode,
+                        FailureSummary = FirstLine(stderr) ?? "ffprobe exited with a non-zero status."
+                    };
+                }
+
+                if (string.IsNullOrWhiteSpace(stdout))
+                {
+                    return new EmbeddedTagReadResult
+                    {
+                        ProbeFailed = true,
+                        ExitCode = exitCode,
+                        FailureSummary = FirstLine(stderr) ?? "ffprobe produced no output."
+                    };
+                }
 
                 var doc = JsonSerializer.Deserialize<JsonElement>(stdout);
-                result = ParseEmbeddedTagsFromFfprobeJson(doc);
+                return new EmbeddedTagReadResult
+                {
+                    Metadata = ParseEmbeddedTagsFromFfprobeJson(doc),
+                    ExitCode = exitCode
+                };
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
                 throw;
             }
-            catch (Exception ex) when (ex is not OutOfMemoryException && ex is not StackOverflowException) { /* silently skip - ffprobe unavailable or file unreadable */ }
-            return result;
+            catch (Exception ex) when (ex is not OutOfMemoryException && ex is not StackOverflowException)
+            {
+                // ffprobe unavailable, unreadable file, or unparseable output. The caller
+                // needs to be able to tell this apart from a file that simply has no tags.
+                return new EmbeddedTagReadResult
+                {
+                    ProbeFailed = true,
+                    FailureSummary = $"{ex.GetType().Name}: {FirstLine(ex.Message)}"
+                };
+            }
+        }
+
+        private static string? FirstLine(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return null;
+            var line = value
+                .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                .FirstOrDefault(candidate => !string.IsNullOrWhiteSpace(candidate))
+                ?.Trim();
+            if (string.IsNullOrWhiteSpace(line)) return null;
+            return line.Length > 300 ? line[..300] : line;
         }
 
         internal static PathParsedMetadata ParseEmbeddedTagsFromFfprobeJson(JsonElement doc)
@@ -204,15 +294,18 @@ namespace Listenarr.Infrastructure.Metadata.Parsing
             var result = new PathParsedMetadata();
 
             if (!doc.TryGetProperty("format", out var fmt)) return result;
+
+            result.DurationSeconds = ReadDurationSeconds(fmt);
+
             if (!fmt.TryGetProperty("tags", out var tags) || tags.ValueKind != JsonValueKind.Object) return result;
 
             result.Title = GetTag(tags, "album");
-            result.Author = GetTag(tags, "album_artist", "ALBUM_ARTIST");
-            result.Narrator = GetTag(tags, "composer", "COMPOSER");
-            result.Series = GetTag(tags, "SERIES", "series");
-            result.SeriesNumber = GetTag(tags, "PART", "part", "SERIES-PART", "series-part");
-            result.Year = GetTag(tags, "date", "year", "DATE", "YEAR")?.Split('-')[0].Trim();
-            result.Description = GetTag(tags, "DESCRIPTION", "description", "comment", "COMMENT");
+            result.Author = GetTag(tags, "album_artist", "artist");
+            result.Narrator = GetTag(tags, "composer");
+            result.Series = GetTag(tags, "series");
+            result.SeriesNumber = GetTag(tags, "part", "series-part");
+            result.Year = GetTag(tags, "date", "year")?.Split('-')[0].Trim();
+            result.Description = GetTag(tags, "description", "comment");
             result.Asin = ExtractAsin(tags);
 
             if (result.Description?.Length > 2000)
@@ -221,15 +314,53 @@ namespace Listenarr.Infrastructure.Metadata.Parsing
             return result;
         }
 
+        /// <summary>
+        /// Looks a tag up by name, case-insensitively. Containers disagree about tag
+        /// casing (MP4 writes "album", Matroska writes "ALBUM"), so an ordinal lookup
+        /// silently loses the tag on half the files in a library.
+        /// </summary>
         private static string? GetTag(JsonElement tags, params string[] names)
         {
-            foreach (var name in names.Where(n => tags.TryGetProperty(n, out var v) && v.ValueKind == JsonValueKind.String))
+            foreach (var name in names)
             {
-                tags.TryGetProperty(name, out var val);
-                var s = val.GetString();
-                if (!string.IsNullOrWhiteSpace(s)) return s.Trim();
+                foreach (var property in tags.EnumerateObject())
+                {
+                    if (property.Value.ValueKind != JsonValueKind.String
+                        || !string.Equals(property.Name, name, StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    var value = property.Value.GetString();
+                    if (!string.IsNullOrWhiteSpace(value)) return value.Trim();
+                }
             }
+
             return null;
+        }
+
+        private static double? ReadDurationSeconds(JsonElement format)
+        {
+            if (!format.TryGetProperty("duration", out var duration)) return null;
+
+            var raw = duration.ValueKind switch
+            {
+                JsonValueKind.String => duration.GetString(),
+                JsonValueKind.Number => duration.GetRawText(),
+                _ => null
+            };
+
+            if (string.IsNullOrWhiteSpace(raw)) return null;
+            if (!double.TryParse(
+                    raw,
+                    System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    out var seconds))
+            {
+                return null;
+            }
+
+            return double.IsFinite(seconds) && seconds > 0 ? seconds : null;
         }
 
         private static string? ExtractAsin(JsonElement tags)

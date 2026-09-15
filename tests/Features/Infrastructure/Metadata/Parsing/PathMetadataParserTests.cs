@@ -44,6 +44,184 @@ namespace Listenarr.Tests.Features.Infrastructure.Metadata.Parsing
         }
 
         [Fact]
+        public void Parse_PlainAuthorTitleLayout_FallsBackToFolderNames()
+        {
+            var root = Path.Join(Path.GetTempPath(), $"MetadataRoot-{Guid.NewGuid():N}");
+            var titleFolder = Path.Join(root, "Brandon Sanderson", "Elantris");
+            var file = Path.Join(titleFolder, "book.m4b");
+
+            var parsed = PathMetadataParser.ParsePathOnly(
+                file,
+                root,
+                FileSystemPathSemantics.CurrentHostDefault);
+
+            Assert.Equal("Elantris", parsed.Title);
+            Assert.Equal("Brandon Sanderson", parsed.Author);
+            Assert.False(parsed.ParsedFromPattern);
+            Assert.Equal(titleFolder, parsed.BookFolderPath);
+        }
+
+        [Fact]
+        public void Parse_PlainLayoutInsideDiscFolder_UsesBookFolderAboveTheDisc()
+        {
+            var root = Path.Join(Path.GetTempPath(), $"MetadataRoot-{Guid.NewGuid():N}");
+            var titleFolder = Path.Join(root, "Brandon Sanderson", "Elantris");
+            var file = Path.Join(titleFolder, "CD2", "01.mp3");
+
+            var parsed = PathMetadataParser.ParsePathOnly(
+                file,
+                root,
+                FileSystemPathSemantics.CurrentHostDefault);
+
+            Assert.Equal("Elantris", parsed.Title);
+            Assert.Equal("Brandon Sanderson", parsed.Author);
+            Assert.Equal(titleFolder, parsed.BookFolderPath);
+        }
+
+        [Fact]
+        public void Parse_YearTitleFolder_StillPrefersTheStrictPattern()
+        {
+            var root = Path.Join(Path.GetTempPath(), $"MetadataRoot-{Guid.NewGuid():N}");
+            var file = Path.Join(root, "Author", "2020 - Title", "book.m4b");
+
+            var parsed = PathMetadataParser.ParsePathOnly(
+                file,
+                root,
+                FileSystemPathSemantics.CurrentHostDefault);
+
+            Assert.True(parsed.ParsedFromPattern);
+            Assert.Equal("Title", parsed.Title);
+            Assert.Equal("Author", parsed.Author);
+            Assert.Equal("2020", parsed.Year);
+        }
+
+        [Fact]
+        public void ParseEmbeddedTagsFromFfprobeJson_ReadsUppercaseAlbumAndArtistTags()
+        {
+            var doc = JsonDocument.Parse("""
+            {
+              "format": {
+                "tags": {
+                  "ALBUM": "Alchemised",
+                  "ARTIST": "SenLinYu"
+                }
+              }
+            }
+            """);
+
+            var result = PathMetadataParser.ParseEmbeddedTagsFromFfprobeJson(doc.RootElement);
+
+            Assert.Equal("Alchemised", result.Title);
+            Assert.Equal("SenLinYu", result.Author);
+        }
+
+        [Fact]
+        public void ParseEmbeddedTagsFromFfprobeJson_PrefersAlbumArtistOverArtist()
+        {
+            var doc = JsonDocument.Parse("""
+            {
+              "format": {
+                "tags": {
+                  "album": "Alchemised",
+                  "album_artist": "SenLinYu",
+                  "artist": "Narrator Person"
+                }
+              }
+            }
+            """);
+
+            var result = PathMetadataParser.ParseEmbeddedTagsFromFfprobeJson(doc.RootElement);
+
+            Assert.Equal("SenLinYu", result.Author);
+        }
+
+        [Fact]
+        public void ParseEmbeddedTagsFromFfprobeJson_ReadsFormatDurationIntoDurationSeconds()
+        {
+            var doc = JsonDocument.Parse("""
+            {
+              "format": {
+                "duration": "3671.250000",
+                "tags": {
+                  "album": "Alchemised"
+                }
+              }
+            }
+            """);
+
+            var result = PathMetadataParser.ParseEmbeddedTagsFromFfprobeJson(doc.RootElement);
+
+            Assert.NotNull(result.DurationSeconds);
+            Assert.Equal(3671.25, result.DurationSeconds!.Value, 3);
+        }
+
+        [Fact]
+        public void ParseEmbeddedTagsFromFfprobeJson_ReadsDurationWhenThereAreNoTags()
+        {
+            var doc = JsonDocument.Parse("""
+            {
+              "format": {
+                "duration": "120.5"
+              }
+            }
+            """);
+
+            var result = PathMetadataParser.ParseEmbeddedTagsFromFfprobeJson(doc.RootElement);
+
+            Assert.Null(result.Title);
+            Assert.Equal(120.5, result.DurationSeconds!.Value, 3);
+        }
+
+        [Fact]
+        public async Task ReadEmbeddedTagsAsync_MissingFfprobeBinary_ReportsProbeFailure()
+        {
+            var result = await PathMetadataParser.ReadEmbeddedTagsAsync(
+                "book.m4b",
+                Path.Join(Path.GetTempPath(), $"ffprobe-does-not-exist-{Guid.NewGuid():N}"),
+                CancellationToken.None);
+
+            Assert.True(result.ProbeFailed);
+            Assert.NotNull(result.FailureSummary);
+            Assert.Null(result.Metadata.Title);
+        }
+
+        [Fact]
+        public async Task ReadEmbeddedTagsAsync_NonZeroExit_ReportsExitCodeAndStderr()
+        {
+            var directory = Path.Join(Path.GetTempPath(), $"ffprobe-failure-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(directory);
+            try
+            {
+                var script = Path.Join(directory, "failing-ffprobe.sh");
+                await File.WriteAllTextAsync(
+                    script,
+                    "#!/bin/sh\necho 'Invalid data found when processing input' 1>&2\nexit 3\n");
+                if (!OperatingSystem.IsWindows())
+                {
+                    File.SetUnixFileMode(
+                        script,
+                        UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+                }
+
+                var result = await PathMetadataParser.ReadEmbeddedTagsAsync(
+                    "book.m4b",
+                    script,
+                    CancellationToken.None);
+
+                Assert.True(result.ProbeFailed);
+                Assert.Equal(3, result.ExitCode);
+                Assert.Contains(
+                    "Invalid data found",
+                    result.FailureSummary!,
+                    StringComparison.Ordinal);
+            }
+            finally
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+        }
+
+        [Fact]
         public async Task ReadEmbeddedTagsAsync_CanceledToken_PropagatesCancellation()
         {
             using var cancellation = new CancellationTokenSource();

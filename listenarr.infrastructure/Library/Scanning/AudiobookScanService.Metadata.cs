@@ -198,20 +198,6 @@ internal sealed partial class AudiobookScanService
         return common;
     }
 
-    private static bool IsDiscDirectory(string segment)
-    {
-        var normalized = ScanFileDiscovery.NormalizeMetadataToken(segment)
-            .Replace(" ", string.Empty, StringComparison.Ordinal);
-        foreach (var prefix in new[] { "cd", "disc", "disk", "part" })
-        {
-            if (normalized.StartsWith(prefix, StringComparison.Ordinal)
-                && normalized[prefix.Length..].All(char.IsDigit)
-                && normalized.Length > prefix.Length)
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
+    private static bool IsDiscDirectory(string segment) =>
+        DiscFolderRules.IsDiscDirectory(segment);
 }

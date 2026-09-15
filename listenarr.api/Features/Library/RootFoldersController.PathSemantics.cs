@@ -4,11 +4,16 @@ namespace Listenarr.Api.Features.Library;
 
 public partial class RootFoldersController
 {
-    private async Task<FileSystemPathSemantics> ResolveFolderSemanticsAsync(
-        RootFolder folder)
+    private Task<FileSystemPathSemantics> ResolveFolderSemanticsAsync(
+        RootFolder folder) =>
+        ResolvePathSemanticsAsync(folder.Path, folder.CaseSensitivityMode);
+
+    private async Task<FileSystemPathSemantics> ResolvePathSemanticsAsync(
+        string path,
+        FileSystemCaseSensitivityMode caseSensitivityMode)
     {
         if (!FileSystemPathIdentity.TryCanonicalizeUnambiguousStoredAbsolutePathForHost(
-                folder.Path,
+                path,
                 out var canonicalPath,
                 out var reason))
         {
@@ -17,7 +22,7 @@ public partial class RootFoldersController
 
         var resolution = await _semanticsResolver.ResolveAsync(
             canonicalPath,
-            folder.CaseSensitivityMode);
+            caseSensitivityMode);
         if (resolution.State != PathIdentityState.Valid)
         {
             throw new InvalidOperationException(

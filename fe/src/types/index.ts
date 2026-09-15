@@ -1217,17 +1217,28 @@ export interface UnmatchedFileItem {
   asin?: string
   format: string
   duration?: string
+  durationSeconds?: number
+}
+
+export interface UnmatchedScanDiagnostics {
+  tagReadingAvailable: boolean
+  filesProbed: number
+  probeFailures: number
+  directoriesSkipped: number
+  message?: string
 }
 
 export interface UnmatchedFilesResponse {
   jobId: string
   status: 'Queued' | 'Processing' | 'Completed' | 'Failed'
   error?: string
+  diagnostics?: UnmatchedScanDiagnostics | null
   items: UnmatchedFileItem[]
 }
 
 export interface SavedUnmatchedResponse {
   lastScannedAt?: string
+  diagnostics?: UnmatchedScanDiagnostics | null
   items: UnmatchedFileItem[]
 }
 

@@ -436,41 +436,54 @@ namespace Listenarr.Tests.Features.Api.Features.Library
         }
 
         [Fact]
-        public void GetUnmatchedResults_RedactsInternalFailureDetails()
+        public async Task GetUnmatchedResults_RedactsInternalFailureDetails()
         {
-            var queue = new FakeUnmatchedQueue
+            var rootPath = Path.Join(Path.GetTempPath(), $"unmatched-redaction-{Guid.NewGuid():N}");
+            var bookPath = Path.Join(rootPath, "book.m4b");
+            Directory.CreateDirectory(rootPath);
+            try
             {
-                LastJob = new UnmatchedScanJob
+                await File.WriteAllTextAsync(bookPath, "audio");
+                var queue = new FakeUnmatchedQueue
                 {
-                    Id = Guid.NewGuid(),
-                    RootFolderPath = "C:\\private\\library",
-                    Status = "Failed",
-                    Error = "C:\\private\\library failed with worker secret",
-                    Results =
-                    [
-                        new UnmatchedFileResult
-                        {
-                            FullPath = "C:\\private\\library\\book.m4b",
-                            RelativePath = "book.m4b"
-                        }
-                    ]
-                }
-            };
-            using var db = CreateDb();
-            var controller = new RootFoldersController(
-                new FakeService(),
-                queue,
-                new EfAudiobookFileRepository(db),
-                new AudiobookRepository(db),
-                new LocalFileSystem());
+                    LastJob = new UnmatchedScanJob
+                    {
+                        Id = Guid.NewGuid(),
+                        RootFolderPath = rootPath,
+                        Status = "Failed",
+                        Error = $"{rootPath} failed with worker secret",
+                        Results =
+                        [
+                            new UnmatchedFileResult
+                            {
+                                FullPath = bookPath,
+                                SourceFiles = [bookPath],
+                                FileCount = 1,
+                                RelativePath = "book.m4b"
+                            }
+                        ]
+                    }
+                };
+                using var db = CreateDb();
+                var controller = new RootFoldersController(
+                    new FakeService(),
+                    queue,
+                    new EfAudiobookFileRepository(db),
+                    new AudiobookRepository(db),
+                    new LocalFileSystem());
 
-            var result = controller.GetUnmatchedResults(queue.LastJob.Id);
+                var result = await controller.GetUnmatchedResults(queue.LastJob.Id);
 
-            var ok = Assert.IsType<Microsoft.AspNetCore.Mvc.OkObjectResult>(result);
-            var json = JsonSerializer.Serialize(ok.Value);
-            Assert.Contains("The unmatched scan failed", json, StringComparison.Ordinal);
-            Assert.Contains("book.m4b", json, StringComparison.Ordinal);
-            Assert.DoesNotContain("worker secret", json, StringComparison.OrdinalIgnoreCase);
+                var ok = Assert.IsType<Microsoft.AspNetCore.Mvc.OkObjectResult>(result);
+                var json = JsonSerializer.Serialize(ok.Value);
+                Assert.Contains("The unmatched scan failed", json, StringComparison.Ordinal);
+                Assert.Contains("book.m4b", json, StringComparison.Ordinal);
+                Assert.DoesNotContain("worker secret", json, StringComparison.OrdinalIgnoreCase);
+            }
+            finally
+            {
+                Directory.Delete(rootPath, recursive: true);
+            }
         }
 
         [Fact]
@@ -1460,6 +1473,191 @@ namespace Listenarr.Tests.Features.Api.Features.Library
                 var items = ok.Value!.GetType().GetProperty("items")!.GetValue(ok.Value);
                 var list = Assert.IsAssignableFrom<List<UnmatchedFileResult>>(items);
                 Assert.Empty(list);
+            }
+            finally
+            {
+                Directory.Delete(rootPath, recursive: true);
+            }
+        }
+
+        [Fact]
+        public async Task GetSavedUnmatched_DropsTrackedSourceFilesAndRecomputesFileCount()
+        {
+            var rootPath = Path.Join(Path.GetTempPath(), $"saved-unmatched-partial-{Guid.NewGuid():N}");
+            var bookFolder = Path.Join(rootPath, "Book");
+            Directory.CreateDirectory(bookFolder);
+            try
+            {
+                var first = Path.Join(bookFolder, "01.mp3");
+                var second = Path.Join(bookFolder, "02.mp3");
+                var third = Path.Join(bookFolder, "03.mp3");
+                foreach (var path in new[] { first, second, third })
+                {
+                    await File.WriteAllTextAsync(path, "audio");
+                }
+
+                var svc = new FakeService();
+                svc.Store.Add(new RootFolder { Id = 1, Name = "Root", Path = rootPath });
+                var queue = new FakeUnmatchedQueue
+                {
+                    LastJob = new UnmatchedScanJob
+                    {
+                        RootFolderPath = rootPath,
+                        Status = "Completed",
+                        CompletedAt = DateTime.UtcNow,
+                        Results =
+                        [
+                            new UnmatchedFileResult
+                            {
+                                FullPath = first,
+                                SourceFiles = [first, second, third],
+                                FileCount = 3,
+                                Size = 300,
+                                BookFolder = bookFolder
+                            }
+                        ]
+                    }
+                };
+                var db = CreateDb();
+                db.AudiobookFiles.Add(new AudiobookFile { Id = 1, Path = first, Format = "mp3" });
+                await db.SaveChangesAsync();
+                var controller = new RootFoldersController(
+                    svc,
+                    queue,
+                    new EfAudiobookFileRepository(db),
+                    new AudiobookRepository(db),
+                    new LocalFileSystem());
+
+                var result = await controller.GetSavedUnmatched(1);
+
+                var ok = Assert.IsType<Microsoft.AspNetCore.Mvc.OkObjectResult>(result);
+                var items = ok.Value!.GetType().GetProperty("items")!.GetValue(ok.Value);
+                var list = Assert.IsAssignableFrom<List<UnmatchedFileResult>>(items);
+                var item = Assert.Single(list);
+                Assert.Equal(2, item.FileCount);
+                Assert.Equal(new[] { second, third }, item.SourceFiles);
+                Assert.Equal(second, item.FullPath);
+                Assert.Equal(200, item.Size);
+            }
+            finally
+            {
+                Directory.Delete(rootPath, recursive: true);
+            }
+        }
+
+        [Fact]
+        public async Task GetUnmatchedResults_DropsTrackedSourceFilesAndRecomputesFileCount()
+        {
+            var rootPath = Path.Join(Path.GetTempPath(), $"job-unmatched-partial-{Guid.NewGuid():N}");
+            var bookFolder = Path.Join(rootPath, "Book");
+            Directory.CreateDirectory(bookFolder);
+            try
+            {
+                var first = Path.Join(bookFolder, "01.mp3");
+                var second = Path.Join(bookFolder, "02.mp3");
+                await File.WriteAllTextAsync(first, "audio");
+                await File.WriteAllTextAsync(second, "audio");
+
+                var svc = new FakeService();
+                svc.Store.Add(new RootFolder { Id = 1, Name = "Root", Path = rootPath });
+                var queue = new FakeUnmatchedQueue
+                {
+                    LastJob = new UnmatchedScanJob
+                    {
+                        Id = Guid.NewGuid(),
+                        RootFolderPath = rootPath,
+                        Status = "Completed",
+                        CompletedAt = DateTime.UtcNow,
+                        Results =
+                        [
+                            new UnmatchedFileResult
+                            {
+                                FullPath = first,
+                                SourceFiles = [first, second],
+                                FileCount = 2,
+                                Size = 200,
+                                BookFolder = bookFolder
+                            }
+                        ]
+                    }
+                };
+                var db = CreateDb();
+                db.AudiobookFiles.Add(new AudiobookFile { Id = 1, Path = first, Format = "mp3" });
+                await db.SaveChangesAsync();
+                var controller = new RootFoldersController(
+                    svc,
+                    queue,
+                    new EfAudiobookFileRepository(db),
+                    new AudiobookRepository(db),
+                    new LocalFileSystem());
+
+                var result = await controller.GetUnmatchedResults(queue.LastJob.Id);
+
+                var ok = Assert.IsType<Microsoft.AspNetCore.Mvc.OkObjectResult>(result);
+                var items = ok.Value!.GetType().GetProperty("items")!.GetValue(ok.Value);
+                var list = Assert.IsAssignableFrom<List<UnmatchedFileResult>>(items);
+                var item = Assert.Single(list);
+                Assert.Equal(1, item.FileCount);
+                Assert.Equal(second, Assert.Single(item.SourceFiles));
+                Assert.Equal(second, item.FullPath);
+            }
+            finally
+            {
+                Directory.Delete(rootPath, recursive: true);
+            }
+        }
+
+        [Fact]
+        public async Task GetUnmatchedResults_DropsRowWhenEverySourceFileIsTracked()
+        {
+            var rootPath = Path.Join(Path.GetTempPath(), $"job-unmatched-all-tracked-{Guid.NewGuid():N}");
+            var bookFolder = Path.Join(rootPath, "Book");
+            Directory.CreateDirectory(bookFolder);
+            try
+            {
+                var first = Path.Join(bookFolder, "01.mp3");
+                var second = Path.Join(bookFolder, "02.mp3");
+                await File.WriteAllTextAsync(first, "audio");
+                await File.WriteAllTextAsync(second, "audio");
+
+                var svc = new FakeService();
+                svc.Store.Add(new RootFolder { Id = 1, Name = "Root", Path = rootPath });
+                var queue = new FakeUnmatchedQueue
+                {
+                    LastJob = new UnmatchedScanJob
+                    {
+                        Id = Guid.NewGuid(),
+                        RootFolderPath = rootPath,
+                        Status = "Completed",
+                        CompletedAt = DateTime.UtcNow,
+                        Results =
+                        [
+                            new UnmatchedFileResult
+                            {
+                                FullPath = first,
+                                SourceFiles = [first, second],
+                                FileCount = 2,
+                                BookFolder = bookFolder
+                            }
+                        ]
+                    }
+                };
+                var db = CreateDb();
+                db.AudiobookFiles.Add(new AudiobookFile { Id = 1, Path = first, Format = "mp3" });
+                db.AudiobookFiles.Add(new AudiobookFile { Id = 2, Path = second, Format = "mp3" });
+                await db.SaveChangesAsync();
+                var controller = new RootFoldersController(
+                    svc,
+                    queue,
+                    new EfAudiobookFileRepository(db),
+                    new AudiobookRepository(db),
+                    new LocalFileSystem());
+
+                var result = await controller.GetUnmatchedResults(queue.LastJob.Id);
+
+                var ok = Assert.IsType<Microsoft.AspNetCore.Mvc.OkObjectResult>(result);
+                var items = ok.Value!.GetType().GetProperty("items")!.GetValue(ok.Value);
+                Assert.Empty(Assert.IsAssignableFrom<List<UnmatchedFileResult>>(items));
             }
             finally
             {

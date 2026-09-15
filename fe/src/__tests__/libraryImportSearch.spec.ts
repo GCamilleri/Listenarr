@@ -23,6 +23,9 @@ import {
   buildLibraryImportSearchParams,
 } from '@/utils/libraryImportSearch'
 
+// cap is deliberately absent from every expectation below. It used to reach the Audible author
+// page collector as a page size and turn one row into a walk of the author's whole catalogue.
+
 describe('library import search helpers', () => {
   it('prefers detected title and author before folder fallback', () => {
     const item = {
@@ -34,10 +37,9 @@ describe('library import search helpers', () => {
 
     expect(buildLibraryImportInitialQuery(item)).toBe('Jack of Shadows')
     expect(buildLibraryImportInitialAuthor(item)).toBe('Roger Zelazny')
-    expect(buildLibraryImportSearchParams(item, 5)).toEqual({
+    expect(buildLibraryImportSearchParams(item)).toEqual({
       title: 'Jack of Shadows',
       author: 'Roger Zelazny',
-      cap: 5,
     })
   })
 
@@ -49,9 +51,8 @@ describe('library import search helpers', () => {
 
     expect(buildLibraryImportFallbackTitle(item)).toBe('The Land 3')
     expect(buildLibraryImportInitialQuery(item)).toBe('The Land 3')
-    expect(buildLibraryImportSearchParams(item, 5)).toEqual({
+    expect(buildLibraryImportSearchParams(item)).toEqual({
       title: 'The Land 3',
-      cap: 5,
     })
   })
 
@@ -66,9 +67,47 @@ describe('library import search helpers', () => {
 
     expect(buildLibraryImportInitialQuery(item)).toBe('B0DQR9D4YG')
     expect(buildLibraryImportInitialAuthor(item)).toBe('')
-    expect(buildLibraryImportSearchParams(item, 5)).toEqual({
+    expect(buildLibraryImportSearchParams(item)).toEqual({
       asin: 'B0DQR9D4YG',
-      cap: 5,
+    })
+  })
+
+  it('passes a duration hint through when the scan supplied one', () => {
+    const item = {
+      fullPath: '/books/Mistborn/Mistborn.m4b',
+      folderName: 'Mistborn',
+      detectedTitle: 'Mistborn, The Final Empire',
+      detectedAuthor: 'Brandon Sanderson',
+      durationSeconds: 89940,
+    }
+
+    expect(buildLibraryImportSearchParams(item)).toEqual({
+      title: 'Mistborn, The Final Empire',
+      author: 'Brandon Sanderson',
+      durationSeconds: 89940,
+    })
+  })
+
+  it('builds a different query for each retry strategy', () => {
+    const item = {
+      fullPath: '/books/Brandon Sanderson/Mistborn 01/Chapter 01.mp3',
+      folderName: 'Mistborn 01',
+      detectedTitle: 'The Final Empire',
+      detectedAuthor: 'Brandon Sanderson',
+    }
+
+    expect(buildLibraryImportSearchParams(item, 'title-author')).toEqual({
+      title: 'The Final Empire',
+      author: 'Brandon Sanderson',
+    })
+    expect(buildLibraryImportSearchParams(item, 'folder-author')).toEqual({
+      title: 'Mistborn 01',
+      author: 'Brandon Sanderson',
+    })
+    expect(buildLibraryImportSearchParams(item, 'folder')).toEqual({ title: 'Mistborn 01' })
+    expect(buildLibraryImportSearchParams(item, 'filename')).toEqual({ title: 'Chapter 01' })
+    expect(buildLibraryImportSearchParams(item, 'title-only')).toEqual({
+      title: 'The Final Empire',
     })
   })
 })

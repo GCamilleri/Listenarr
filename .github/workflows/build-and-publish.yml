@@ -379,7 +379,9 @@ jobs:
         run: |
           set -euo pipefail
 
-          all_tags="$(printf '%s\n' "$DOCKER_TAGS" | sed '/^[[:space:]]*$/d')"
+          # Docker refuses an uppercase repository name, and a tag derived from
+          # github.repository_owner carries whatever case the account uses.
+          all_tags="$(printf '%s\n' "$DOCKER_TAGS" | sed '/^[[:space:]]*$/d' | tr '[:upper:]' '[:lower:]')"
           dockerhub_tags="$(printf '%s\n' "$all_tags" | grep -E '^(docker\.io/|therobbiedavis/)' || true)"
           ghcr_tags="$(printf '%s\n' "$all_tags" | grep '^ghcr\.io/' || true)"
           atcr_tags="$(printf '%s\n' "$all_tags" | grep '^atcr\.io/' || true)"

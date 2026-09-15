@@ -40,6 +40,24 @@ namespace Listenarr.Application.Audiobooks.Jobs
         public string? CoverPath { get; set; }
         public string? Asin { get; set; }
         public string Format { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Summed runtime of every file in the group, when ffprobe could read it.
+        /// </summary>
+        public double? DurationSeconds { get; set; }
+    }
+
+    /// <summary>
+    /// Per-job observability for the unmatched scan. Without it a scan that read no
+    /// tags at all and a scan where every file was genuinely untagged look identical.
+    /// </summary>
+    public class UnmatchedScanDiagnostics
+    {
+        public bool TagReadingAvailable { get; set; }
+        public int FilesProbed { get; set; }
+        public int ProbeFailures { get; set; }
+        public int DirectoriesSkipped { get; set; }
+        public string? Message { get; set; }
     }
 
     public static class UnmatchedScanPublicError
@@ -59,6 +77,7 @@ namespace Listenarr.Application.Audiobooks.Jobs
         public string Status { get; set; } = "Queued";
         public string? Error { get; set; }
         public List<UnmatchedFileResult>? Results { get; set; }
+        public UnmatchedScanDiagnostics? Diagnostics { get; set; }
     }
 
     public interface IUnmatchedScanQueueService

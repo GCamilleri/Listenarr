@@ -279,8 +279,12 @@ namespace Listenarr.Tests.Features.Api.Services
             Assert.Equal("M4B", result.Format);
         }
 
+        // Replaces UnmatchedScanProcessor_PinnedPathOnly_DoesNotReopenFilesForMetadataEnrichment,
+        // which pinned the defect: a root that authorizes as PinnedPathOnly (SMB, NFS, any
+        // filesystem where statx cannot prove generations) had tag reading and sidecar
+        // reading skipped entirely. Both are read-only work behind a pinned handle.
         [Fact]
-        public async Task UnmatchedScanProcessor_PinnedPathOnly_DoesNotReopenFilesForMetadataEnrichment()
+        public async Task UnmatchedScanProcessor_PinnedPathOnly_ResolvesFfprobeAndReadsSidecars()
         {
             var root = FileService.GetTempDirectory("unmatched-processor-limited-root");
             var bookDirectory = Path.Join(root, "Author", "2026 - Limited Book");
@@ -325,6 +329,9 @@ namespace Listenarr.Tests.Features.Api.Services
                 _provider.GetRequiredService<IFileSystemSemanticsResolver>());
             CreateHubProxy<SettingsHub>(out var hubContext);
             var ffmpeg = new Mock<IFfmpegService>(MockBehavior.Strict);
+            ffmpeg
+                .Setup(service => service.GetFfprobePathAsync())
+                .ReturnsAsync((string?)null);
             var processor = new UnmatchedScanProcessor(
                 queue,
                 _provider.GetRequiredService<IServiceScopeFactory>(),
@@ -344,11 +351,69 @@ namespace Listenarr.Tests.Features.Api.Services
             Assert.Equal(expectedSize, result.Size);
             Assert.Equal("Limited Book", result.Title);
             Assert.Equal("Author", result.Author);
-            Assert.Null(result.Description);
-            Assert.Null(result.Narrator);
-            Assert.Null(result.CoverPath);
+            Assert.Equal("filesystem-sidecar-description", result.Description);
+            Assert.Equal("filesystem-sidecar-narrator", result.Narrator);
+            Assert.Equal(Path.Join(bookDirectory, "cover.jpg"), result.CoverPath);
+            ffmpeg.Verify(service => service.GetFfprobePathAsync(), Times.Once);
             ffmpeg.VerifyNoOtherCalls();
+            Assert.NotNull(updatedJob.Diagnostics);
+            Assert.False(updatedJob.Diagnostics!.TagReadingAvailable);
             authorization.VerifyAll();
+        }
+
+        [Fact]
+        public async Task UnmatchedScanProcessor_FailingFfprobe_CountsProbeFailuresAndCompletes()
+        {
+            var root = FileService.GetTempDirectory("unmatched-processor-ffprobe-failure");
+            var bookDirectory = Path.Join(root, "Author", "2026 - Broken Tags");
+            Directory.CreateDirectory(bookDirectory);
+            await FileService.GetFileAsync(bookDirectory, "Broken Tags.m4b", "audio");
+            var fakeFfprobe = Path.Join(root, "failing-ffprobe.sh");
+            await File.WriteAllTextAsync(
+                fakeFfprobe,
+                "#!/bin/sh\necho 'Invalid data found when processing input' 1>&2\nexit 1\n");
+            if (!OperatingSystem.IsWindows())
+            {
+                File.SetUnixFileMode(
+                    fakeFfprobe,
+                    UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            }
+
+            await AddAuthorizedRootAsync(root);
+            await CreateApplicationSettings();
+
+            var queue = new UnmatchedScanQueueService(
+                _provider.GetRequiredService<ILogger<UnmatchedScanQueueService>>(),
+                _provider.GetRequiredService<IFileSystemSemanticsResolver>());
+            CreateHubProxy<SettingsHub>(out var hubContext);
+            var ffmpeg = new Mock<IFfmpegService>(MockBehavior.Strict);
+            ffmpeg
+                .Setup(service => service.GetFfprobePathAsync())
+                .ReturnsAsync(fakeFfprobe);
+            var processor = new UnmatchedScanProcessor(
+                queue,
+                _provider.GetRequiredService<IServiceScopeFactory>(),
+                _provider.GetRequiredService<ILogger<UnmatchedScanProcessor>>(),
+                hubContext.Object,
+                ffmpeg.Object,
+                _provider.GetRequiredService<IFileSystemSemanticsResolver>());
+            await queue.EnqueueAsync(root);
+            Assert.True(queue.Reader.TryRead(out var job));
+
+            await processor.ProcessJobAsync(job, CancellationToken.None);
+
+            Assert.True(queue.TryGetJob(job.Id, out var updatedJob));
+            Assert.Equal("Completed", updatedJob!.Status);
+            var result = Assert.Single(updatedJob.Results!);
+            Assert.Equal("Broken Tags", result.Title);
+            Assert.NotNull(updatedJob.Diagnostics);
+            Assert.True(updatedJob.Diagnostics!.TagReadingAvailable);
+            Assert.Equal(1, updatedJob.Diagnostics.FilesProbed);
+            Assert.Equal(1, updatedJob.Diagnostics.ProbeFailures);
+            Assert.Contains(
+                "Tag reading failed for 1 of 1 files.",
+                updatedJob.Diagnostics.Message,
+                StringComparison.Ordinal);
         }
 
         [Fact]
@@ -414,6 +479,7 @@ namespace Listenarr.Tests.Features.Api.Services
                 bookDirectory,
                 enumeration,
                 semantics,
+                hasDurableGenerationProof: true,
                 CancellationToken.None);
 
             Assert.Equal("authorized description", parsed.Description);
@@ -500,6 +566,7 @@ namespace Listenarr.Tests.Features.Api.Services
                 parsed.BookFolderPath ?? string.Empty,
                 enumeration,
                 semantics,
+                hasDurableGenerationProof: true,
                 CancellationToken.None);
 
             Assert.Equal(bookDirectory, parsed.BookFolderPath);
@@ -572,6 +639,7 @@ namespace Listenarr.Tests.Features.Api.Services
                     bookDirectory,
                     enumeration,
                     semantics,
+                    hasDurableGenerationProof: true,
                     CancellationToken.None));
 
             Assert.Null(parsed.Description);

@@ -6,7 +6,7 @@ namespace Listenarr.Infrastructure.Library.Scanning;
 
 internal static partial class ScanFileDiscovery
 {
-    private const string PinnedPathOnlyIdentity = "scan:pinned-path-only";
+    internal const string PinnedPathOnlyIdentity = "scan:pinned-path-only";
 
     internal static EnumerationResult CollectCandidates(
         IFileSystem fileSystem,

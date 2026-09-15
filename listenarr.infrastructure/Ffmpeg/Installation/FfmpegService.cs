@@ -95,8 +95,59 @@ namespace Listenarr.Infrastructure.Ffmpeg.Installation
                 return Task.FromResult<string?>(_ffprobePath);
             }
 
-            _logger.LogInformation("No bundled ffprobe found at {Path}", _ffprobePath);
+            var onPath = FindFfprobeOnPath();
+            if (onPath != null)
+            {
+                _logger.LogInformation("Found ffprobe on PATH at {Path}", onPath);
+                return Task.FromResult<string?>(onPath);
+            }
+
+            _logger.LogInformation("No bundled ffprobe found at {Path} and none on PATH", _ffprobePath);
             return Task.FromResult<string?>(null);
+        }
+
+        /// <summary>
+        /// Locates ffprobe on the process PATH. Distribution packages and container base
+        /// images install it there, and without this fallback a working ffprobe is ignored
+        /// whenever the bundled download has not run.
+        /// </summary>
+        private string? FindFfprobeOnPath()
+        {
+            try
+            {
+                var pathVariable = Environment.GetEnvironmentVariable("PATH");
+                if (string.IsNullOrWhiteSpace(pathVariable))
+                {
+                    return null;
+                }
+
+                foreach (var directory in pathVariable.Split(
+                    Path.PathSeparator,
+                    StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                {
+                    string candidate;
+                    try
+                    {
+                        candidate = Path.Join(directory, _ffprobeName);
+                    }
+                    catch (ArgumentException)
+                    {
+                        continue;
+                    }
+
+                    if (File.Exists(candidate))
+                    {
+                        return candidate;
+                    }
+                }
+            }
+            catch (Exception exception) when (
+                exception is not (OperationCanceledException or OutOfMemoryException or StackOverflowException))
+            {
+                _logger.LogDebug(exception, "Failed to search PATH for ffprobe");
+            }
+
+            return null;
         }
 
         /// <summary>

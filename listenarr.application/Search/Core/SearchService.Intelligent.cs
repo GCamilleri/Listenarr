@@ -8,7 +8,9 @@ namespace Listenarr.Application.Search.Core
 {
     public partial class SearchService : ISearchService
     {
-        public async Task<List<MetadataSearchResult>> IntelligentSearchAsync(string query, int candidateLimit = 200, int returnLimit = 100, string containmentMode = "Relaxed", bool requireAuthorAndPublisher = false, double fuzzyThreshold = 0.2, string region = "us", string? language = null, CancellationToken ct = default)
+        // durationSeconds sits after the cancellation token on purpose: it is a late addition and
+        // moving it earlier would silently rebind every existing positional caller.
+        public async Task<List<MetadataSearchResult>> IntelligentSearchAsync(string query, int candidateLimit = 200, int returnLimit = 100, string containmentMode = "Relaxed", bool requireAuthorAndPublisher = false, double fuzzyThreshold = 0.2, string region = "us", string? language = null, CancellationToken ct = default, int? durationSeconds = null)
         {
             var results = new List<MetadataSearchResult>();
 
@@ -23,6 +25,20 @@ namespace Listenarr.Application.Search.Core
                 var isbnVal = parsedQuery.Isbn;
                 var authorVal = parsedQuery.Author;
                 var titleVal = parsedQuery.Title;
+
+                // An advanced request arrives as "AUTHOR:x TITLE:y", and the parser strips those
+                // prefixed spans out, leaving actualQuery empty. Scoring and candidate collection
+                // need words, not the raw prefixed string.
+                var parsedTerms = string.Join(" ", new[] { titleVal, authorVal }.Where(term => !string.IsNullOrWhiteSpace(term)));
+                var effectiveQuery = !string.IsNullOrWhiteSpace(actualQuery)
+                    ? actualQuery
+                    : (!string.IsNullOrWhiteSpace(parsedTerms) ? parsedTerms : query);
+
+                var scoreRequest = new MatchScoreRequest(
+                    Title: titleVal,
+                    Author: authorVal,
+                    DurationSeconds: durationSeconds,
+                    Language: language);
 
                 try { _logger.LogInformation("Parsed prefixes: ASIN={Asin}, ISBN={Isbn}, AUTHOR={Author}, TITLE={Title}", asinVal, isbnVal, authorVal, titleVal); }
                 catch (Exception caughtEx_1) when (caughtEx_1 is not OperationCanceledException && caughtEx_1 is not OutOfMemoryException && caughtEx_1 is not StackOverflowException)
@@ -51,7 +67,7 @@ namespace Listenarr.Application.Search.Core
                         language);
                     if (simpleAudibleResults?.Any() == true)
                     {
-                        return simpleAudibleResults;
+                        return ApplyMatchScores(simpleAudibleResults, scoreRequest);
                     }
 
                     var authorAudibleResults = await _audibleAuthorSearchWorkflow.TrySearchAsync(
@@ -64,11 +80,11 @@ namespace Listenarr.Application.Search.Core
                         language);
                     if (authorAudibleResults?.Any() == true)
                     {
-                        return authorAudibleResults;
+                        return ApplyMatchScores(authorAudibleResults, scoreRequest);
                     }
 
                 }
-                catch (Exception exAudibleFirst) when (exAudibleFirst is not OperationCanceledException && exAudibleFirst is not OutOfMemoryException && exAudibleFirst is not StackOverflowException)
+                catch (Exception exAudibleFirst) when (exAudibleFirst is not MetadataSearchUnavailableException && exAudibleFirst is not OperationCanceledException && exAudibleFirst is not OutOfMemoryException && exAudibleFirst is not StackOverflowException)
                 {
                     _logger.LogWarning(exAudibleFirst, "Audible-first attempt failed; falling back to provider searches for query: {Query}", query);
                 }
@@ -109,7 +125,7 @@ namespace Listenarr.Application.Search.Core
 
                 // Step 2: Collect candidates from OpenLibrary (and other non-scraping sources)
                 var candidateCollection = await _asinCandidateCollector.CollectCandidatesAsync(
-                    query, skipOpenLibrary, ct);
+                    effectiveQuery, skipOpenLibrary, ct);
 
                 var asinCandidates = candidateCollection.AsinCandidates;
                 var asinToRawResult = candidateCollection.AsinToRawResult;
@@ -231,8 +247,8 @@ namespace Listenarr.Application.Search.Core
                     // Compute containment and fuzzy similarity based on title/author/description
                     try
                     {
-                        containmentScore = SearchResultMatchEvaluator.ComputeContainmentScore(r, query);
-                        fuzzyScore = SearchResultMatchEvaluator.ComputeFuzzySimilarity((r.Title ?? string.Empty) + " " + (r.Artist ?? string.Empty), query);
+                        containmentScore = SearchResultMatchEvaluator.ComputeContainmentScore(r, effectiveQuery);
+                        fuzzyScore = SearchResultMatchEvaluator.ComputeFuzzySimilarity((r.Title ?? string.Empty) + " " + (r.Artist ?? string.Empty), effectiveQuery);
                     }
                     catch (Exception ex) when (ex is not OperationCanceledException && ex is not OutOfMemoryException && ex is not StackOverflowException)
                     {
@@ -240,7 +256,7 @@ namespace Listenarr.Application.Search.Core
                     }
 
                     // Use the scorer to compute comprehensive relevance score
-                    var scoredResult = _searchResultScorer.ScoreResult(r, query, containmentScore, fuzzyScore);
+                    var scoredResult = _searchResultScorer.ScoreResult(r, effectiveQuery, containmentScore, fuzzyScore);
 
                     // Attach computed score to the SearchResult so callers / UI can inspect it
                     try { r.Score = (int)Math.Round(scoredResult.Score * 100.0); }
@@ -274,7 +290,7 @@ namespace Listenarr.Application.Search.Core
                         {
                             // Require direct containment (substring) in key fields
                             var hay = string.Join(" ", new[] { r.Title, r.Artist, r.Album, r.Description, r.Publisher, r.Narrator, r.Language, r.Series }.Where(s2 => !string.IsNullOrEmpty(s2))).ToLowerInvariant();
-                            if (string.IsNullOrEmpty(hay) || hay.IndexOf(query, StringComparison.OrdinalIgnoreCase) < 0)
+                            if (string.IsNullOrEmpty(hay) || hay.IndexOf(effectiveQuery, StringComparison.OrdinalIgnoreCase) < 0)
                             {
                                 keep = false;
                                 _logger.LogInformation("Dropping ASIN {Asin} (Strict containment failed). containmentScore={Score}, fuzzy={Fuzzy}", r.Asin, s.ContainmentScore, s.FuzzyScore);
@@ -286,7 +302,7 @@ namespace Listenarr.Application.Search.Core
                             // (e.g. Audible, Audnexus, Audible scrape, OpenLibrary),
                             // treat it as authoritative and bypass the containment check.
                             var mdLower = (r.MetadataSource ?? string.Empty).ToLowerInvariant();
-                            var isAuthoritative = mdLower.Contains("audible") || mdLower.Contains("audnex") || mdLower.Contains("audnexus") || mdLower.Contains("audible") || mdLower.Contains("openlibrary");
+                            var isAuthoritative = mdLower.Contains("audible") || mdLower.Contains("audnex") || mdLower.Contains("audnexus") || mdLower.Contains("openlibrary");
 
                             if (isAuthoritative)
                             {
@@ -337,9 +353,12 @@ namespace Listenarr.Application.Search.Core
                     await _searchProgressReporter.BroadcastAsync($"Filtering and scoring {results.Count} results", null);
                 }
 
-                // Sort results primarily by computed relevance score, then by metadata source priority
+                // Sort results primarily by match confidence when the request described a book,
+                // then by computed relevance score, then by metadata source priority
+                results = ApplyMatchScores(results, scoreRequest);
                 results = results
-                    .OrderByDescending(r => r.Score)
+                    .OrderByDescending(r => r.MatchScore ?? -1)
+                    .ThenByDescending(r => r.Score)
                     .ThenByDescending(r =>
                     {
                         if (string.IsNullOrEmpty(r.MetadataSource)) return 0;
@@ -381,11 +400,51 @@ namespace Listenarr.Application.Search.Core
                 _logger.LogInformation("Intelligent search cancelled by request for query: {Query}", query);
                 return results;
             }
-            catch (Exception ex) when (ex is not OperationCanceledException && ex is not OutOfMemoryException && ex is not StackOverflowException)
+            catch (Exception ex) when (ex is not MetadataSearchUnavailableException && ex is not OperationCanceledException && ex is not OutOfMemoryException && ex is not StackOverflowException)
             {
                 _logger.LogError(ex, "Error during intelligent search for query: {Query}", query);
                 return results;
             }
+        }
+
+        /// <summary>
+        /// Score every candidate against what the caller said it was looking for and sort by that
+        /// confidence. A request with no title has nothing to score against and is left alone.
+        /// </summary>
+        private static List<MetadataSearchResult> ApplyMatchScores(
+            List<MetadataSearchResult> results,
+            MatchScoreRequest request)
+        {
+            if (string.IsNullOrWhiteSpace(request.Title))
+            {
+                return results;
+            }
+
+            foreach (var result in results)
+            {
+                var breakdown = LibraryMatchScorer.Score(request, ToMatchCandidate(result));
+                result.MatchScore = Math.Round(breakdown.Score, 4);
+                result.MatchReasons = breakdown.Reasons.ToList();
+            }
+
+            return results
+                .OrderByDescending(result => result.MatchScore ?? -1)
+                .ToList();
+        }
+
+        private static MatchScoreCandidate ToMatchCandidate(MetadataSearchResult result)
+        {
+            return new MatchScoreCandidate(
+                Title: result.Title,
+                Subtitle: result.Subtitle,
+                Authors: string.IsNullOrWhiteSpace(result.Artist)
+                    ? Array.Empty<string>()
+                    : new[] { result.Artist },
+                SeriesName: result.Series,
+                SeriesPosition: result.SeriesNumber,
+                RuntimeMinutes: result.Runtime,
+                Language: result.Language,
+                FormatType: result.Format);
         }
 
         public async Task<List<SearchResult>> SearchByApiAsync(string apiId, string query, string? category = null)

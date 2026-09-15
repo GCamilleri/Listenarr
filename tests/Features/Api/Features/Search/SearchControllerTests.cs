@@ -645,7 +645,7 @@ namespace Listenarr.Tests.Features.Api.Features.Search
             return Task.FromResult(new List<SearchResult>());
         }
 
-        public Task<List<MetadataSearchResult>> IntelligentSearchAsync(string query, int candidateLimit = 50, int returnLimit = 50, string containmentMode = "Relaxed", bool requireAuthorAndPublisher = false, double fuzzyThreshold = 0.7, string region = "us", string? language = null, System.Threading.CancellationToken ct = default)
+        public Task<List<MetadataSearchResult>> IntelligentSearchAsync(string query, int candidateLimit = 50, int returnLimit = 50, string containmentMode = "Relaxed", bool requireAuthorAndPublisher = false, double fuzzyThreshold = 0.7, string region = "us", string? language = null, System.Threading.CancellationToken ct = default, int? durationSeconds = null)
         {
             return Task.FromResult(_results);
         }

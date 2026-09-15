@@ -64,7 +64,9 @@ public sealed class SearchResponseMapper
             r.MetadataSource,
             r.Source,
             r.SourceLink,
-            r.Score
+            r.Score,
+            r.MatchScore,
+            r.MatchReasons
         }).Cast<object>().ToList() ?? new List<object>();
     }
 
@@ -288,6 +290,8 @@ public sealed class SearchResponseMapper
             narrators = fallbackNarrators,
             genres = new List<object>(),
             series = fallbackSeries,
+            matchScore = md?.MatchScore,
+            matchReasons = md?.MatchReasons ?? new List<string>(),
             updatedAt = (string?)null
         };
     }
@@ -423,6 +427,8 @@ public sealed class SearchResponseMapper
             genres = genres,
             series = series,
             seriesList = series.Select(s => $"{s.name}{(s.position != null ? $" #{s.position}" : "")}").ToList(),
+            matchScore = md?.MatchScore,
+            matchReasons = md?.MatchReasons ?? new List<string>(),
             updatedAt = DateTime.UtcNow.ToString("o")
         };
     }

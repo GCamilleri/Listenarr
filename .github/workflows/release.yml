@@ -150,16 +150,13 @@ jobs:
       pr_title: ${{ needs.release-build.outputs.pr_title }}
       pr_body_raw: ${{ needs.release-build.outputs.pr_body_raw }}
       discord_text: A new stable build has been released for docker.
+      # Publish to the registry owned by whoever runs this workflow. Upstream
+      # keeps its own Docker Hub, GHCR and ATCR namespaces; a fork can push to
+      # none of them, and must not try.
       docker_tags: |
-        docker.io/therobbiedavis/listenarr:stable
-        docker.io/therobbiedavis/listenarr:latest
-        docker.io/therobbiedavis/listenarr:${{ needs.release-build.outputs.version }}
-        ghcr.io/listenarrs/listenarr:stable
-        ghcr.io/listenarrs/listenarr:latest
-        ghcr.io/listenarrs/listenarr:${{ needs.release-build.outputs.version }}
-        atcr.io/therobbiedavis.com/listenarr:stable
-        atcr.io/therobbiedavis.com/listenarr:latest
-        atcr.io/therobbiedavis.com/listenarr:${{ needs.release-build.outputs.version }}
+        ghcr.io/${{ github.repository_owner }}/listenarr:stable
+        ghcr.io/${{ github.repository_owner }}/listenarr:latest
+        ghcr.io/${{ github.repository_owner }}/listenarr:${{ needs.release-build.outputs.version }}
     secrets:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -194,6 +191,9 @@ jobs:
             {"ref":"${{ github.ref_name }}","version":"${{ needs.release-build.outputs.version }}"}
 
       - name: Open PR — forward release hotfixes to canary
+        # Upstream's branch-sync convention. A fork releasing a test build has
+        # no main → canary flow to forward, and should not open PRs.
+        if: github.repository_owner == 'listenarrs'
         run: |
           set -euo pipefail
           VERSION="${{ needs.release-build.outputs.version }}"

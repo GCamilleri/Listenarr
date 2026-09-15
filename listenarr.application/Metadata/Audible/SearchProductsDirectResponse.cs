@@ -25,5 +25,12 @@ namespace Listenarr.Application.Metadata.Audible
         public List<AudibleSearchResult> Results { get; set; } = new();
         public int TotalResults { get; set; }
         public List<JsonElement>? RawProducts { get; set; }
+
+        /// <summary>The request did not complete, so an empty result list means nothing.</summary>
+        public bool Failed { get; set; }
+
+        public bool RateLimited { get; set; }
+
+        public TimeSpan? RetryAfter { get; set; }
     }
 }

@@ -31,7 +31,22 @@ namespace Listenarr.Application.Metadata.Audible
     public class AudibleGenre { public string? Asin { get; set; } public string? Name { get; set; } public string? Type { get; set; } }
     public class AudibleSeries { public string? Asin { get; set; } public string? Name { get; set; } public string? Position { get; set; } }
 
-    public class AudibleSearchResponse { public List<AudibleSearchResult>? Results { get; set; } public int? TotalResults { get; set; } }
+    public class AudibleSearchResponse
+    {
+        public List<AudibleSearchResult>? Results { get; set; }
+        public int? TotalResults { get; set; }
+
+        /// <summary>
+        /// The request did not complete: a transport error, a timeout or a non-success status.
+        /// Without this an Audible outage is indistinguishable from "this book does not exist".
+        /// </summary>
+        public bool Failed { get; set; }
+
+        /// <summary>Audible answered 429. <see cref="RetryAfter"/> carries the header when it sent one.</summary>
+        public bool RateLimited { get; set; }
+
+        public TimeSpan? RetryAfter { get; set; }
+    }
 
     public class AudibleSearchResult
     {

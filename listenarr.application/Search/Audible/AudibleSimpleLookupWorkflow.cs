@@ -51,6 +51,7 @@ namespace Listenarr.Application.Search.Audible
         private async Task<List<MetadataSearchResult>?> SearchByIsbnAsync(string isbn, string region, string? language)
         {
             var response = await _audibleService.SearchByIsbnAsync(isbn, 1, 50, region, language);
+            AudibleSearchFailureGuard.ThrowIfUnavailable(response, isbn);
             if (response?.Results == null || !response.Results.Any())
             {
                 return null;
@@ -95,6 +96,7 @@ namespace Listenarr.Application.Search.Audible
         private async Task<List<MetadataSearchResult>?> SearchByTitleAsync(string title, string region, string? language)
         {
             var response = await _audibleService.SearchByTitleAsync(title, 1, 50, region, language);
+            AudibleSearchFailureGuard.ThrowIfUnavailable(response, title);
             if (response?.Results == null || !response.Results.Any())
             {
                 return null;
@@ -113,6 +115,7 @@ namespace Listenarr.Application.Search.Audible
         private async Task<List<MetadataSearchResult>?> SearchBooksAsync(string query, string region, string? language)
         {
             var response = await _audibleService.SearchBooksAsync(query, 1, 50, region, language);
+            AudibleSearchFailureGuard.ThrowIfUnavailable(response, query);
             if (response?.Results == null || !response.Results.Any())
             {
                 return null;

@@ -27,6 +27,7 @@ import type {
   AudibleBookMetadata,
   AudiobookSeriesMembership,
   UnmatchedFileItem,
+  UnmatchedScanDiagnostics,
 } from '@/types'
 
 /** Best score at or above this is auto-selected and ticked. */
@@ -191,7 +192,9 @@ function unmatchedToImportItem(item: UnmatchedFileItem): LibraryImportItem {
     detectedSeries: item.series,
     format: item.format,
     fileCount: item.fileCount,
-    durationSeconds: parseDurationSeconds(item.duration),
+    // The scan populates durationSeconds directly; parseDurationSeconds only
+    // covers rows persisted before the scan started emitting it.
+    durationSeconds: item.durationSeconds ?? parseDurationSeconds(item.duration),
     selectedMatch: null,
     matchState: 'unsearched',
     matchIssue: 'none',
@@ -280,6 +283,10 @@ export const useLibraryImportStore = defineStore('libraryImport', () => {
   const rootFolderId = ref<number | null>(null)
   const scanStatus = ref<'idle' | 'scanning' | 'done' | 'error'>('idle')
   const scanError = ref<string | null>(null)
+  const scanDiagnostics = ref<UnmatchedScanDiagnostics | null>(null)
+  // Set when the scan completed but could not read some or all embedded tags, so the
+  // UI can say why rows have no title or author instead of looking simply wrong.
+  const scanWarning = computed(() => scanDiagnostics.value?.message ?? null)
   const lastScannedAt = ref<string | null>(null)
   const action = ref<'none' | 'move' | 'hardlink/copy'>('none')
   const monitor = ref<'none' | 'all'>('all')
@@ -315,6 +322,7 @@ export const useLibraryImportStore = defineStore('libraryImport', () => {
     try {
       const saved = await apiService.getSavedUnmatchedFiles(id)
       if (saved.lastScannedAt) lastScannedAt.value = saved.lastScannedAt
+      scanDiagnostics.value = saved.diagnostics ?? null
       const persisted = _loadPersistedMatches(id)
       const newItems: Record<string, LibraryImportItem> = {}
       for (const item of saved.items) {
@@ -347,6 +355,7 @@ export const useLibraryImportStore = defineStore('libraryImport', () => {
     rootFolderId.value = id
     scanStatus.value = 'scanning'
     scanError.value = null
+    scanDiagnostics.value = null
     try {
       localStorage.removeItem(_storageKey(id))
     } catch {
@@ -372,6 +381,7 @@ export const useLibraryImportStore = defineStore('libraryImport', () => {
       cleanUp()
       try {
         const response = await apiService.getUnmatchedResults(completedJobId)
+        scanDiagnostics.value = response.diagnostics ?? null
         _populateFromItems(response.items)
         _persistMatches()
         lastScannedAt.value = new Date().toISOString()
@@ -857,6 +867,8 @@ export const useLibraryImportStore = defineStore('libraryImport', () => {
     rootFolderId,
     scanStatus,
     scanError,
+    scanDiagnostics,
+    scanWarning,
     lastScannedAt,
     action,
     monitor,

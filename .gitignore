@@ -228,6 +228,17 @@ Temporary Items
 docker-compose.override.yml
 
 ##########################
+# AI agent tooling       #
+##########################
+
+# Claude Code: CLAUDE.md and .claude/rules/ are committed on purpose.
+# Everything below is per-machine scratch.
+.claude/settings.local.json
+.claude/worktrees/
+.claude/plans/
+CLAUDE.local.md
+
+##########################
 # Temporary & Misc       #
 ##########################
 

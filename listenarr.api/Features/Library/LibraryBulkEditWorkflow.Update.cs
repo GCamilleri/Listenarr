@@ -265,7 +265,35 @@ namespace Listenarr.Api.Features.Library
                     }
                 }
 
-                if (!changed && !rootFolderRewritten && !physicalPathChangeRequested)
+                var seriesRequested = false;
+                if (updates != null && updates.TryGetValue(SeriesUpdateKey, out var seriesObj))
+                {
+                    seriesRequested = true;
+                    var seriesOutcome = ApplySeriesUpdate(audiobook, seriesObj);
+                    if (seriesOutcome.Error != null)
+                    {
+                        _logger.LogDebug(
+                            "Rejected series update for audiobook {AudiobookId}: {Reason}",
+                            id,
+                            seriesOutcome.Error);
+                        errors.Add(seriesOutcome.Error);
+                    }
+                    else if (seriesOutcome.Changed)
+                    {
+                        changed = true;
+                        _logger.LogInformation(
+                            "Updated series memberships for audiobook id={Id}: {Change}",
+                            id,
+                            seriesOutcome.HistoryMessage);
+                        if (seriesOutcome.HistoryMessage != null)
+                        {
+                            historyMessages.Add(seriesOutcome.HistoryMessage);
+                        }
+                    }
+                }
+
+                if (!changed && !rootFolderRewritten && !physicalPathChangeRequested
+                    && !(seriesRequested && errors.Count == 0))
                 {
                     errors.Add("No valid updates provided for this audiobook");
                     return new BulkUpdateOutcome(false, false, errors);
@@ -289,7 +317,11 @@ namespace Listenarr.Api.Features.Library
                     }
                 }
 
-                return new BulkUpdateOutcome(errors.Count == 0, changed, errors);
+                return new BulkUpdateOutcome(
+                    errors.Count == 0,
+                    changed,
+                    errors,
+                    seriesRequested ? audiobook.SeriesMemberships?.ToList() ?? [] : null);
             }
             catch (Exception ex) when (ex is not OperationCanceledException
                 && ex is not OutOfMemoryException
@@ -321,7 +353,8 @@ namespace Listenarr.Api.Features.Library
         private sealed record BulkUpdateOutcome(
             bool Success,
             bool MetadataUpdated,
-            List<string> Errors);
+            List<string> Errors,
+            List<AudiobookSeriesMembership>? SeriesMemberships = null);
 
         private Task<PhysicalBulkUpdateOutcome> ExecutePhysicalPathChangeAsync(
             int id,

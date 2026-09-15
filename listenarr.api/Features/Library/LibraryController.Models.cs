@@ -40,6 +40,12 @@ public partial class LibraryController
     {
         public List<int> Ids { get; set; } = [];
         public Dictionary<string, object> Updates { get; set; } = [];
+
+        /// <summary>
+        /// Per-audiobook updates layered over <see cref="Updates"/>, keyed by audiobook id. Used for
+        /// per-book series numbers, where every book takes the same update apart from its position.
+        /// </summary>
+        public Dictionary<int, Dictionary<string, object>>? PerIdOverrides { get; set; }
         public BulkPathChangeRequest? PathChange { get; set; }
     }
 

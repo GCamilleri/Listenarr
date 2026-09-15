@@ -23,6 +23,12 @@ namespace Listenarr.Application.Search.Audible
             _logger = logger;
         }
 
+        /// <summary>
+        /// Upper bound on pages walked. At the largest page size that is 1000 titles, which is
+        /// more than any real author catalogue, and it stops a paging bug from looping forever.
+        /// </summary>
+        private const int MaxPages = 20;
+
         public async Task<List<AudibleSearchResult>> CollectAsync(
             string author,
             int candidateLimit,
@@ -33,13 +39,26 @@ namespace Listenarr.Application.Search.Audible
             var aggregated = new List<AudibleSearchResult>();
             var pageSize = Math.Min(50, Math.Max(10, candidateLimit));
 
-            for (var page = 1; page <= int.MaxValue; page++)
+            for (var page = 1; page <= MaxPages; page++)
             {
                 try
                 {
                     var pageRes = await _audibleService.SearchByAuthorAsync(author, page, pageSize, region, language);
                     var pageCount = pageRes?.Results?.Count ?? 0;
                     aggregated.AddRange(pageRes?.Results ?? Enumerable.Empty<AudibleSearchResult>());
+
+                    // A transport failure or a 429 is not the end of the catalogue. Stop, but say
+                    // so, rather than reporting a truncated catalogue as complete.
+                    if (pageRes?.RateLimited == true || pageRes?.Failed == true)
+                    {
+                        _logger.LogWarning(
+                            "Audible {Context}: page {Page} for author '{Author}' failed (rateLimited={RateLimited}); catalogue is incomplete",
+                            logContext,
+                            page,
+                            author,
+                            pageRes.RateLimited);
+                        break;
+                    }
 
                     _logger.LogInformation(
                         "Audible {Context}: page {Page} returned {PageCount} results (aggregated {AggregatedCount}) for author '{Author}'",

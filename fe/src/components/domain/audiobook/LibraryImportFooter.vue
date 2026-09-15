@@ -49,6 +49,11 @@
         <span v-else>Files will be added to the library without being moved or copied</span>
       </label>
 
+      <div v-if="store.queuePausedReason" class="rate-limit-warning" data-testid="queue-paused">
+        <PhWarning :size="14" />
+        {{ store.queuePausedReason }}
+      </div>
+
       <div v-if="store.metadataFetchCount > 100" class="rate-limit-warning">
         <PhWarning :size="14" />
         {{ store.metadataFetchCount }} API lookups - rate limit: 150/window
@@ -77,6 +82,30 @@
         <PhPlay :size="14" />
         Start Matching
       </button>
+
+      <div v-if="store.retryableCount > 0 && !store.isProcessing" class="retry-unmatched">
+        <button
+          class="btn btn-secondary btn-sm"
+          data-testid="retry-unmatched-toggle"
+          :disabled="isImporting"
+          @click="showRetryMenu = !showRetryMenu"
+        >
+          <PhArrowsClockwise :size="14" />
+          Retry unmatched ({{ store.retryableCount }})
+        </button>
+        <ul v-if="showRetryMenu" class="retry-menu" data-testid="retry-unmatched-menu">
+          <li v-for="strategy in retryStrategies" :key="strategy.value">
+            <button
+              type="button"
+              class="retry-option"
+              :data-strategy="strategy.value"
+              @click="runRetry(strategy.value)"
+            >
+              {{ strategy.label }}
+            </button>
+          </li>
+        </ul>
+      </div>
 
       <template v-if="store.isProcessing">
         <PhSpinner class="ph-spin" :size="14" />
@@ -123,8 +152,17 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { PhWarning, PhPlay, PhStop, PhSpinner, PhDownload } from '@phosphor-icons/vue'
+import {
+  PhWarning,
+  PhPlay,
+  PhStop,
+  PhSpinner,
+  PhDownload,
+  PhArrowsClockwise,
+} from '@phosphor-icons/vue'
 import { useLibraryImportStore } from '@/stores/libraryImport'
+import { LIBRARY_IMPORT_SEARCH_STRATEGIES } from '@/utils/libraryImportSearch'
+import type { LibraryImportSearchStrategy } from '@/utils/libraryImportSearch'
 import { useToast } from '@/services/toastService'
 import { useFilesystemReadinessStore } from '@/stores/filesystemReadiness'
 import type { RootFolder } from '@/types'
@@ -139,6 +177,8 @@ const filesystemReadinessStore = useFilesystemReadinessStore()
 const toast = useToast()
 
 const destinationFolderId = ref<number | null>(props.folders[0]?.id ?? null)
+const showRetryMenu = ref(false)
+const retryStrategies = LIBRARY_IMPORT_SEARCH_STRATEGIES
 const isImporting = ref(false)
 const importingCount = ref(0)
 
@@ -172,6 +212,11 @@ const importButtonLabel = computed(() => {
 
   return `Import ${count > 0 ? count : ''} ${noun}`.replace(/\s+/g, ' ').trim()
 })
+
+function runRetry(strategy: LibraryImportSearchStrategy) {
+  showRetryMenu.value = false
+  store.retryUnmatched(strategy)
+}
 
 async function handleImport() {
   if (isImporting.value || store.selectedCount === 0 || !filesystemReadinessStore.filesystemReady) {
@@ -218,6 +263,42 @@ async function handleImport() {
   align-items: center;
   gap: 1rem;
   z-index: 10;
+}
+
+.retry-unmatched {
+  position: relative;
+}
+
+.retry-menu {
+  position: absolute;
+  bottom: calc(100% + 0.35rem);
+  left: 0;
+  z-index: 20;
+  margin: 0;
+  padding: 0.25rem;
+  list-style: none;
+  min-width: 12rem;
+  background: #1f1f1f;
+  border: 1px solid #333;
+  border-radius: 10px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+}
+
+.retry-option {
+  display: block;
+  width: 100%;
+  padding: 0.35rem 0.5rem;
+  background: none;
+  border: none;
+  text-align: left;
+  color: #d5d7dd;
+  font-size: 0.78rem;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.retry-option:hover {
+  background: #2a2a2a;
 }
 
 .footer-left {

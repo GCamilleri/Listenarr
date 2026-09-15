@@ -18,7 +18,11 @@
 <template>
   <tr
     class="import-row"
-    :class="{ selected: item.selected, 'no-match': item.hasSearched && !item.selectedMatch }"
+    :class="{
+      selected: item.selected,
+      'no-match': item.matchState === 'unmatched',
+      'needs-review': item.matchState === 'needs-review',
+    }"
   >
     <td class="cell-check">
       <input
@@ -74,8 +78,9 @@
           <span>Searching...</span>
         </div>
 
-        <div v-else-if="item.selectedMatch" class="match-status matched">
-          <PhCheckCircle :size="14" class="match-icon-ok" />
+        <div v-else-if="item.selectedMatch" class="match-status" :class="item.matchState">
+          <PhCheckCircle v-if="item.matchState === 'matched'" :size="14" class="match-icon-ok" />
+          <PhWarningCircle v-else :size="14" class="match-icon-warn" />
           <div class="match-copy">
             <span
               class="match-title"
@@ -91,15 +96,28 @@
             >
               {{ item.selectedMatch.authors[0]?.name }}
             </span>
+            <span
+              v-if="item.selectedMatch.matchScore != null"
+              class="match-confidence"
+              :title="(item.selectedMatch.matchReasons ?? []).join(', ')"
+              data-testid="match-confidence"
+            >
+              {{ Math.round(item.selectedMatch.matchScore * 100) }}%
+            </span>
           </div>
           <button class="btn-clear-match" title="Clear match" @click="store.clearMatch(item.id)">
             x
           </button>
         </div>
 
-        <div v-else-if="item.hasSearched" class="match-status no-match">
+        <div v-else-if="item.matchState === 'unmatched'" class="match-status no-match">
           <PhWarningCircle :size="14" class="match-icon-warn" />
-          <span>No match found</span>
+          <span data-testid="match-explanation">{{ matchExplanation }}</span>
+        </div>
+
+        <div v-else-if="item.matchIssue !== 'none'" class="match-status no-match">
+          <PhWarningCircle :size="14" class="match-icon-warn" />
+          <span data-testid="match-explanation">{{ matchExplanation }}</span>
         </div>
 
         <div v-else class="match-status unsearched">
@@ -114,6 +132,50 @@
           <PhMagnifyingGlass :size="14" />
         </button>
       </div>
+
+      <p v-if="item.matchState === 'needs-review'" class="review-hint" data-testid="review-hint">
+        {{ matchExplanation }}
+      </p>
+
+      <button
+        v-if="item.matchState === 'matched' && item.candidates.length > 1"
+        class="btn-change-match"
+        data-testid="change-match"
+        @click="showCandidates = !showCandidates"
+      >
+        {{ showCandidates ? 'Hide alternatives' : 'Change' }}
+      </button>
+
+      <ul v-if="visibleCandidates.length > 0" class="candidate-list" data-testid="candidate-list">
+        <li v-for="candidate in visibleCandidates" :key="candidateKey(candidate)">
+          <button
+            type="button"
+            class="candidate"
+            :class="{ chosen: candidate === item.selectedMatch }"
+            :title="(candidate.matchReasons ?? []).join(', ')"
+            @click="applyMatch(candidate)"
+          >
+            <img
+              v-if="candidate.imageUrl"
+              :src="getProtectedImageSrc(candidate.imageUrl, placeholderUrl)"
+              class="candidate-thumb"
+              alt=""
+            />
+            <span class="candidate-copy">
+              <span class="candidate-title">
+                {{ candidate.title
+                }}<span v-if="candidate.subtitle" class="candidate-subtitle">
+                  - {{ candidate.subtitle }}</span
+                >
+              </span>
+              <span class="candidate-meta">{{ candidateMeta(candidate) }}</span>
+            </span>
+            <span v-if="candidate.matchScore != null" class="candidate-score">
+              {{ Math.round(candidate.matchScore * 100) }}%
+            </span>
+          </button>
+        </li>
+      </ul>
     </td>
   </tr>
 
@@ -130,6 +192,9 @@ import { computed, ref } from 'vue'
 import { PhSpinner, PhCheckCircle, PhWarningCircle, PhMagnifyingGlass } from '@phosphor-icons/vue'
 import { useLibraryImportStore } from '@/stores/libraryImport'
 import type { LibraryImportItem } from '@/stores/libraryImport'
+import { useProtectedImages } from '@/composables/useProtectedImages'
+import { getPlaceholderUrl } from '@/utils/placeholder'
+import { formatCandidateMeta } from '@/utils/libraryImportCandidate'
 import type { SearchResult } from '@/types'
 import LibraryImportSearchModal from './LibraryImportSearchModal.vue'
 
@@ -137,11 +202,55 @@ const props = defineProps<{ item: LibraryImportItem }>()
 
 const store = useLibraryImportStore()
 const showSearchModal = ref(false)
+const showCandidates = ref(false)
+const { getProtectedImageSrc } = useProtectedImages()
+const placeholderUrl = getPlaceholderUrl()
 
 const bookDisplayTitle = computed(() => props.item.detectedTitle?.trim() || props.item.folderName)
 const bookMetaLine = computed(() =>
   [props.item.detectedAuthor, props.item.detectedSeries].filter(Boolean).join(' - '),
 )
+
+// A doubtful row shows its alternatives without a modal; a confident one hides them behind
+// "Change" so the common case stays quiet.
+const visibleCandidates = computed(() => {
+  if (props.item.matchState === 'needs-review') return props.item.candidates
+  if (props.item.matchState === 'matched' && showCandidates.value) return props.item.candidates
+  return []
+})
+
+const matchExplanation = computed(() => {
+  const item = props.item
+  switch (item.matchIssue) {
+    case 'rate-limited':
+      return 'Rate limited by the metadata provider - not searched yet'
+    case 'search-failed':
+      return 'The search request failed - not searched yet'
+    case 'no-results':
+      return 'No results found'
+    case 'ambiguous':
+      return 'Two results scored almost the same - pick one'
+    case 'low-confidence':
+      return explainLowConfidence(item)
+    default:
+      return item.matchState === 'unmatched' ? 'No match found' : ''
+  }
+})
+
+function explainLowConfidence(item: LibraryImportItem): string {
+  const reasons = item.selectedMatch?.matchReasons ?? []
+  const disagreement = reasons.find((reason) => reason.includes('disagrees'))
+  if (disagreement) return `Low confidence: ${disagreement}`
+  return 'Low confidence - check the match'
+}
+
+function candidateKey(candidate: SearchResult): string {
+  return candidate.asin ?? candidate.id ?? candidate.title
+}
+
+function candidateMeta(candidate: SearchResult): string {
+  return formatCandidateMeta(candidate)
+}
 
 function isAuthorMismatch(item: LibraryImportItem): boolean {
   if (!item.detectedAuthor || !item.selectedMatch?.authors?.length) return false
@@ -152,6 +261,7 @@ function isAuthorMismatch(item: LibraryImportItem): boolean {
 
 function applyMatch(result: SearchResult) {
   store.selectMatch(props.item.id, result)
+  showCandidates.value = false
 }
 
 function formatGroupedFileLabel(sourceFile: string): string {
@@ -405,8 +515,107 @@ function formatGroupedFileLabel(sourceFile: string): string {
   color: #f59e0b;
 }
 
-.match-status.no-match {
+.match-status.no-match,
+.match-status.needs-review {
   color: #f59e0b;
+}
+
+.match-confidence {
+  font-size: 0.7rem;
+  color: #9aa4b5;
+  border: 1px solid #333;
+  border-radius: 999px;
+  padding: 0.06rem 0.35rem;
+  flex-shrink: 0;
+}
+
+.review-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.72rem;
+  color: #f59e0b;
+}
+
+.btn-change-match {
+  margin-top: 0.35rem;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.72rem;
+  color: #8ea2ff;
+  cursor: pointer;
+}
+
+.candidate-list {
+  list-style: none;
+  margin: 0.4rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.25rem;
+  border: 1px solid #2d2d2d;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.candidate {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.35rem 0.5rem;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+}
+
+.candidate:hover {
+  background: #232323;
+}
+
+.candidate.chosen {
+  background: rgba(99, 102, 241, 0.12);
+}
+
+.candidate-thumb {
+  width: 28px;
+  height: 28px;
+  object-fit: cover;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.candidate-copy {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.candidate-title {
+  font-size: 0.78rem;
+  color: #e0e0e0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.candidate-subtitle {
+  color: #9aa4b5;
+}
+
+.candidate-meta {
+  font-size: 0.68rem;
+  color: #888;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.candidate-score {
+  font-size: 0.7rem;
+  color: #9aa4b5;
+  flex-shrink: 0;
 }
 
 .match-status.unsearched {

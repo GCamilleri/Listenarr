@@ -192,9 +192,7 @@ function unmatchedToImportItem(item: UnmatchedFileItem): LibraryImportItem {
     detectedSeries: item.series,
     format: item.format,
     fileCount: item.fileCount,
-    // The scan populates durationSeconds directly; parseDurationSeconds only
-    // covers rows persisted before the scan started emitting it.
-    durationSeconds: item.durationSeconds ?? parseDurationSeconds(item.duration),
+    durationSeconds: item.durationSeconds,
     selectedMatch: null,
     matchState: 'unsearched',
     matchIssue: 'none',
@@ -203,24 +201,6 @@ function unmatchedToImportItem(item: UnmatchedFileItem): LibraryImportItem {
     isSearching: false,
     selected: false,
   }
-}
-
-// Plan 02 puts a real duration on the scan row. Until then `duration` is a display string, so
-// read what we can and leave the hint off when it is not a number of seconds.
-function parseDurationSeconds(duration?: string | number): number | undefined {
-  if (typeof duration === 'number') return duration > 0 ? duration : undefined
-  if (!duration) return undefined
-  const trimmed = duration.trim()
-  if (/^\d+(\.\d+)?$/.test(trimmed)) {
-    const seconds = Math.round(Number(trimmed))
-    return seconds > 0 ? seconds : undefined
-  }
-  const parts = trimmed.split(':').map((part) => Number(part))
-  if (parts.length >= 2 && parts.length <= 3 && parts.every((part) => Number.isFinite(part))) {
-    const seconds = parts.reduce((total, part) => total * 60 + part, 0)
-    return seconds > 0 ? Math.round(seconds) : undefined
-  }
-  return undefined
 }
 
 function matchToMetadata(result: SearchResult): AudibleBookMetadata {
@@ -301,7 +281,9 @@ export const useLibraryImportStore = defineStore('libraryImport', () => {
   const selectedCount = computed(() => itemList.value.filter((i) => i.selected).length)
   const hasUnprocessedItems = computed(() => itemList.value.some((i) => !i.hasSearched))
   const processedCount = computed(() => itemList.value.filter((i) => i.hasSearched).length)
-  const matchedCount = computed(() => itemList.value.filter((i) => i.matchState === 'matched').length)
+  const matchedCount = computed(
+    () => itemList.value.filter((i) => i.matchState === 'matched').length,
+  )
   const needsReviewCount = computed(
     () => itemList.value.filter((i) => i.matchState === 'needs-review').length,
   )
@@ -603,7 +585,8 @@ export const useLibraryImportStore = defineStore('libraryImport', () => {
           [id]: {
             ...current,
             ...outcome,
-            matchedByStrategy: outcome.matchState === 'matched' ? strategy : current.matchedByStrategy,
+            matchedByStrategy:
+              outcome.matchState === 'matched' ? strategy : current.matchedByStrategy,
             isSearching: false,
             hasSearched: true,
           },
@@ -653,15 +636,23 @@ export const useLibraryImportStore = defineStore('libraryImport', () => {
       const results = await apiService.advancedSearch(
         isAsin
           ? { asin: query.trim() }
-          : { title: query, ...(item.durationSeconds ? { durationSeconds: item.durationSeconds } : {}) },
+          : {
+              title: query,
+              ...(item.durationSeconds ? { durationSeconds: item.durationSeconds } : {}),
+            },
       )
       const current = items.value[id]!
       items.value[id] = {
         ...current,
         isSearching: false,
         hasSearched: true,
-        candidates: [...results].sort((a, b) => (b.matchScore ?? -1) - (a.matchScore ?? -1)).slice(0, MAX_ROW_CANDIDATES),
-        matchState: current.matchState === 'unsearched' && results.length === 0 ? 'unmatched' : current.matchState,
+        candidates: [...results]
+          .sort((a, b) => (b.matchScore ?? -1) - (a.matchScore ?? -1))
+          .slice(0, MAX_ROW_CANDIDATES),
+        matchState:
+          current.matchState === 'unsearched' && results.length === 0
+            ? 'unmatched'
+            : current.matchState,
       }
       _persistMatches()
       return results

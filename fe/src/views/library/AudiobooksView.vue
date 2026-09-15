@@ -688,8 +688,10 @@
       :is-open="showBulkEditModal"
       :selected-count="selectedCount"
       :selected-ids="libraryStore.selectedIds"
+      :selected-ids-ordered="orderedSelectedIds"
       @close="closeBulkEdit"
       @saved="handleBulkEditSaved"
+      @organize="organizeAfterBulkEdit"
     />
 
     <!-- Edit Audiobook Modal -->
@@ -850,7 +852,7 @@ import { evaluateRules } from '@/utils/customFilterEvaluator'
 import type { RuleLike } from '@/utils/customFilterEvaluator'
 import { computeAudiobookStatus, formatAudiobookStatus } from '@/utils/audiobookStatus'
 import { safeText } from '@/utils/textUtils'
-import { formatSeriesMemberships } from '@/utils/seriesUtils'
+import { formatSeriesMemberships, getBookSeriesNames } from '@/utils/seriesUtils'
 import { getPlaceholderUrl } from '@/utils/placeholder'
 import { errorTracking } from '@/services/errorTracking'
 import { isLikelyBackendImageUrl, useProtectedImages } from '@/composables/useProtectedImages'
@@ -1376,27 +1378,6 @@ watch(groupBy, (v) => {
 
 // (grouping sync handled earlier in file)
 
-// All series a book belongs to (deduped), so a multi-series book is grouped under each
-// of its series rather than only its primary. Falls back to the legacy single series.
-function getBookSeriesNames(book: Audiobook): string[] {
-  const memberships = book.seriesMemberships
-  if (memberships && memberships.length > 0) {
-    const names: string[] = []
-    const seen = new Set<string>()
-    for (const membership of memberships) {
-      const name = (membership.seriesName || '').trim()
-      if (!name) continue
-      const dedupeKey = name.toLowerCase()
-      if (seen.has(dedupeKey)) continue
-      seen.add(dedupeKey)
-      names.push(name)
-    }
-    if (names.length > 0) return names
-  }
-  const legacy = (book.series || '').trim()
-  return legacy ? [legacy] : []
-}
-
 const groupedCollections = computed(() => {
   if (groupBy.value === 'books') return []
 
@@ -1637,6 +1618,11 @@ function clearFilters() {
 const loading = computed(() => libraryStore.loading)
 const error = computed(() => libraryStore.error)
 const selectedCount = computed(() => libraryStore.selectedIds.size)
+// Selection in the order this view shows it, so bulk per-book numbering starts from what the
+// user sees rather than from Set insertion order.
+const orderedSelectedIds = computed(() =>
+  audiobooks.value.filter((book) => libraryStore.isSelected(book.id)).map((book) => book.id),
+)
 const hasRootFolderConfigured = computed(() => {
   return (
     rootFoldersStore.folders.length > 0 ||
@@ -2336,6 +2322,14 @@ function closeBulkEdit() {
 
 function showOrganize() {
   organizeAudiobookIds.value = Array.from(libraryStore.selectedIds)
+  showOrganizeModal.value = true
+}
+
+// Offered after a bulk series change: the folder pattern points somewhere new, so show the
+// rename preview rather than moving anything as part of the save.
+function organizeAfterBulkEdit(ids: number[]) {
+  showBulkEditModal.value = false
+  organizeAudiobookIds.value = ids
   showOrganizeModal.value = true
 }
 

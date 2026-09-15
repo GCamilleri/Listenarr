@@ -43,3 +43,68 @@ function formatMembership(membership: AudiobookSeriesMembership): string {
   const number = (membership.seriesNumber || '').trim()
   return number ? `${name} #${number}` : name
 }
+
+/**
+ * All series a book belongs to (deduped case-insensitively), so a multi-series book is grouped
+ * under each of its series rather than only its primary. Falls back to the legacy single series.
+ */
+export function getBookSeriesNames(book: SeriesBearer): string[] {
+  const memberships = book.seriesMemberships
+  if (memberships && memberships.length > 0) {
+    const names: string[] = []
+    const seen = new Set<string>()
+    for (const membership of memberships) {
+      const name = (membership.seriesName || '').trim()
+      if (!name) continue
+      const dedupeKey = name.toLowerCase()
+      if (seen.has(dedupeKey)) continue
+      seen.add(dedupeKey)
+      names.push(name)
+    }
+    if (names.length > 0) return names
+  }
+  const legacy = (book.series || '').trim()
+  return legacy ? [legacy] : []
+}
+
+export interface SeriesNameCount {
+  name: string
+  count: number
+}
+
+/**
+ * Distinct series names across the given books with the number of books in each, ordered by
+ * count and then name. The first spelling encountered wins, so picking a suggestion sends the
+ * stored spelling rather than a normalised one and the books land on the same tile.
+ */
+export function collectSeriesNameCounts(books: SeriesBearer[]): SeriesNameCount[] {
+  const counts = new Map<string, SeriesNameCount>()
+  for (const book of books) {
+    for (const name of getBookSeriesNames(book)) {
+      const key = name.toLowerCase()
+      const existing = counts.get(key)
+      if (existing) {
+        existing.count += 1
+      } else {
+        counts.set(key, { name, count: 1 })
+      }
+    }
+  }
+  return [...counts.values()].sort(
+    (left, right) => right.count - left.count || left.name.localeCompare(right.name),
+  )
+}
+
+/** The book's position in one specific series, matched case-insensitively by name. */
+export function getSeriesNumberFor(book: SeriesBearer, seriesName: string): string {
+  const target = seriesName.trim().toLowerCase()
+  if (!target) return ''
+  const membership = (book.seriesMemberships ?? []).find(
+    (candidate) => (candidate.seriesName || '').trim().toLowerCase() === target,
+  )
+  if (membership) return (membership.seriesNumber || '').trim()
+  if ((book.series || '').trim().toLowerCase() === target) {
+    return (book.seriesNumber || '').trim()
+  }
+  return ''
+}

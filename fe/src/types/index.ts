@@ -699,6 +699,7 @@ export type AudiobookExternalIdentifierSource = 'Provider' | 'Imported' | 'Manua
 
 export interface AudiobookSeriesMembership {
   id?: number
+  audiobookId?: number
   seriesName: string
   seriesNumber?: string
   seriesAsin?: string
@@ -1286,4 +1287,44 @@ export interface RenameResult {
   conflict: boolean
   error?: string
   renamedFiles: FileRenameResultItem[]
+}
+
+export type BulkSeriesUpdateMode =
+  | 'setPrimary'
+  | 'addMembership'
+  | 'removeMembership'
+  | 'renameMembership'
+
+export type BulkSeriesNumbering = 'keep' | 'clear' | 'explicit'
+
+/**
+ * The `series` key of a bulk update. `matchName` picks the membership to act on for
+ * removeMembership and renameMembership; it falls back to `seriesName` when absent.
+ */
+export interface BulkSeriesUpdate {
+  mode: BulkSeriesUpdateMode
+  seriesName?: string
+  seriesAsin?: string
+  matchName?: string
+  numbering?: BulkSeriesNumbering
+  seriesNumber?: string
+  replaceOthers?: boolean
+}
+
+export type BulkUpdateValue = boolean | number | string | BulkSeriesUpdate
+
+export interface BulkUpdateItemResult {
+  id: number
+  success: boolean
+  metadataUpdated?: boolean
+  pathChangeOutcome?: string
+  moveJobId?: string | null
+  resolvedDestination?: string | null
+  seriesMemberships?: AudiobookSeriesMembership[] | null
+  errors: string[]
+}
+
+export interface BulkUpdateResponse {
+  message: string
+  results: BulkUpdateItemResult[]
 }

@@ -24,6 +24,8 @@ import type {
   ProwlarrImportConnectionSettings,
   Audiobook,
   AudiobookUpdateRequest,
+  BulkUpdateResponse,
+  BulkUpdateValue,
   History,
   Indexer,
   QueueItem,
@@ -1496,38 +1498,17 @@ class ApiService {
 
   async bulkUpdateAudiobooks(
     ids: number[],
-    updates: Record<string, boolean | number | string>,
+    updates: Record<string, BulkUpdateValue>,
     pathChange?: {
       mode: 'None' | 'MetadataOnly' | 'Physical'
       destinationRootOrPath?: string | null
       deleteEmptySource: boolean
     },
-  ): Promise<{
-    message: string
-    results: Array<{
-      id: number
-      success: boolean
-      metadataUpdated?: boolean
-      pathChangeOutcome?: string
-      moveJobId?: string | null
-      resolvedDestination?: string | null
-      errors: string[]
-    }>
-  }> {
-    return this.request<{
-      message: string
-      results: Array<{
-        id: number
-        success: boolean
-        metadataUpdated?: boolean
-        pathChangeOutcome?: string
-        moveJobId?: string | null
-        resolvedDestination?: string | null
-        errors: string[]
-      }>
-    }>('/library/bulk-update', {
+    perIdOverrides?: Record<number, Record<string, BulkUpdateValue>>,
+  ): Promise<BulkUpdateResponse> {
+    return this.request<BulkUpdateResponse>('/library/bulk-update', {
       method: 'POST',
-      body: JSON.stringify({ ids, updates, pathChange }),
+      body: JSON.stringify({ ids, updates, pathChange, perIdOverrides }),
     })
   }
 

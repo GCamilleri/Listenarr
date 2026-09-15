@@ -102,6 +102,11 @@ namespace Listenarr.Api.Features.Library
                 try
                 {
                     cancellationToken.ThrowIfCancellationRequested();
+                    var idUpdates = MergePerIdOverrides(
+                        metadataUpdates,
+                        request.PerIdOverrides,
+                        id,
+                        pathChangeMode);
                     var rootRewrite = pathChangeMode switch
                     {
                         LibraryController.BulkPathChangeMode.Physical =>
@@ -109,13 +114,13 @@ namespace Listenarr.Api.Features.Library
                         LibraryController.BulkPathChangeMode.MetadataOnly =>
                             await RewriteRootFolderIfRequestedAsync(
                                 id,
-                                metadataUpdates,
+                                idUpdates,
                                 settings,
                                 request.PathChange?.DestinationRootOrPath,
                                 cancellationToken),
                         _ => await RewriteRootFolderIfRequestedAsync(
                             id,
-                            metadataUpdates,
+                            idUpdates,
                             settings,
                             cancellationToken: cancellationToken)
                     };
@@ -128,7 +133,7 @@ namespace Listenarr.Api.Features.Library
                         {
                             var physical = await ExecutePhysicalPathChangeAsync(
                                 id,
-                                metadataUpdates,
+                                idUpdates,
                                 settings,
                                 request.PathChange,
                                 cancellationToken);
@@ -145,7 +150,7 @@ namespace Listenarr.Api.Features.Library
                                 id,
                                 token => UpdateOneAsync(
                                     id,
-                                    metadataUpdates,
+                                    idUpdates,
                                     rootRewrite.Rewritten,
                                     physicalPathChangeRequested: false,
                                     token),
@@ -227,6 +232,7 @@ namespace Listenarr.Api.Features.Library
                         pathChangeOutcome,
                         moveJobId,
                         resolvedDestination,
+                        seriesMemberships = outcome.SeriesMemberships,
                         errors = errors.Distinct(StringComparer.Ordinal).ToList()
                     });
                 }
@@ -246,5 +252,38 @@ namespace Listenarr.Api.Features.Library
             });
         }
 
+        /// <summary>
+        /// Layers this audiobook's entry in <c>perIdOverrides</c> over the shared updates, so a
+        /// single request can carry a per-book series number without one round trip per number.
+        /// </summary>
+        private static Dictionary<string, object> MergePerIdOverrides(
+            Dictionary<string, object> updates,
+            Dictionary<int, Dictionary<string, object>>? perIdOverrides,
+            int id,
+            LibraryController.BulkPathChangeMode pathChangeMode)
+        {
+            if (perIdOverrides == null
+                || !perIdOverrides.TryGetValue(id, out var overrides)
+                || overrides == null
+                || overrides.Count == 0)
+            {
+                return updates;
+            }
+
+            var merged = new Dictionary<string, object>(updates, StringComparer.OrdinalIgnoreCase);
+            foreach (var (key, value) in overrides)
+            {
+                merged[key] = value;
+            }
+
+            merged.Remove("moveFiles");
+            merged.Remove("deleteEmptySource");
+            if (pathChangeMode == LibraryController.BulkPathChangeMode.Physical)
+            {
+                merged.Remove("rootFolder");
+            }
+
+            return merged;
+        }
     }
 }

@@ -85,6 +85,7 @@ describe('bulk edit orchestration', () => {
         destinationRootOrPath: destinationRoot,
         deleteEmptySource: true,
       },
+      undefined,
     )
     expect(dependencies.trackQueuedJob).toHaveBeenNthCalledWith(1, {
       jobId: 'job-1',
@@ -300,7 +301,49 @@ describe('bulk edit orchestration', () => {
         destinationRootOrPath: '/library-new',
         deleteEmptySource: false,
       },
+      undefined,
     )
+    expect(dependencies.trackQueuedJob).not.toHaveBeenCalled()
+  })
+  it('forwards per-id overrides and the returned series memberships untouched', async () => {
+    const dependencies = createDependencies()
+    dependencies.bulkUpdateAudiobooks.mockResolvedValueOnce({
+      message: 'updated',
+      results: [
+        {
+          id: 1,
+          success: true,
+          metadataUpdated: true,
+          pathChangeOutcome: 'none',
+          moveJobId: null,
+          resolvedDestination: null,
+          seriesMemberships: [
+            { seriesName: 'The Mistborn Saga', seriesNumber: '1', isPrimary: true },
+          ],
+          errors: [],
+        },
+      ],
+    } as never)
+
+    const series = { mode: 'setPrimary' as const, seriesName: 'The Mistborn Saga' }
+    const outcome = await executeBulkEdit(
+      {
+        ids: [1],
+        updates: { series },
+        perIdOverrides: { 1: { series: { ...series, numbering: 'explicit', seriesNumber: '1' } } },
+        moveFiles: false,
+        deleteEmptySource: false,
+      },
+      dependencies,
+    )
+
+    expect(dependencies.bulkUpdateAudiobooks).toHaveBeenCalledWith([1], { series }, undefined, {
+      1: { series: { ...series, numbering: 'explicit', seriesNumber: '1' } },
+    })
+    expect(outcome.results[0]?.success).toBe(true)
+    expect(outcome.results[0]?.seriesMemberships).toEqual([
+      { seriesName: 'The Mistborn Saga', seriesNumber: '1', isPrimary: true },
+    ])
     expect(dependencies.trackQueuedJob).not.toHaveBeenCalled()
   })
 })

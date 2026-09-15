@@ -249,6 +249,15 @@
           <PhPencil />
           Edit Selected
         </button>
+        <button
+          v-if="isSeriesCollection && selectableAudiobookCount > 0"
+          class="toolbar-btn"
+          data-testid="move-all-to-series"
+          @click="moveAllToSeries"
+        >
+          <PhBooks />
+          Move all to series...
+        </button>
         <button v-if="selectedCount > 0" class="toolbar-btn" @click="showOrganize">
           <PhFolderOpen />
           Organize Selected
@@ -668,8 +677,12 @@
       :is-open="showBulkEditModal"
       :selected-count="selectedCount"
       :selected-ids="selectedIdsForView"
+      :selected-ids-ordered="orderedSelectedIds"
+      :initial-series-mode="bulkEditSeriesMode"
+      :initial-match-name="bulkEditMatchName"
       @close="closeBulkEdit"
       @saved="handleBulkEditSaved"
+      @organize="organizeAfterBulkEdit"
     />
 
     <RenamePreviewModal
@@ -817,6 +830,7 @@ import type {
   AuthorCatalogResponse,
   AuthorLookupResponse,
   AudibleBookMetadata,
+  BulkSeriesUpdateMode,
   MonitoredAuthor,
   MonitoredSeries,
   RelatedAuthorItem,
@@ -1515,7 +1529,15 @@ const toggleItemDetails = () => {
   showItemDetails.value = !showItemDetails.value
 }
 
+const orderedSelectedIds = computed(() =>
+  audiobooks.value
+    .filter((book) => book.inLibrary && libraryStore.isSelected(book.id))
+    .map((book) => book.id),
+)
+
 const showBulkEditModal = ref(false)
+const bulkEditSeriesMode = ref<'none' | BulkSeriesUpdateMode>('none')
+const bulkEditMatchName = ref('')
 const showOrganizeModal = ref(false)
 const organizeAudiobookIds = ref<number[]>([])
 const deleting = ref(false)
@@ -1527,6 +1549,23 @@ const deleteCapabilities = ref<AudiobookDeleteCapabilities | null>(null)
 const lastClickedIndex = ref<number | null>(null)
 
 function showBulkEdit() {
+  bulkEditSeriesMode.value = 'none'
+  bulkEditMatchName.value = ''
+  showBulkEditModal.value = true
+}
+
+/**
+ * One-click merge for duplicate series tiles caused by spelling variants: select every library
+ * book on this page and open the bulk editor pre-set to rename this page's series.
+ */
+function moveAllToSeries() {
+  for (const book of audiobooks.value) {
+    if (book.inLibrary && book.id > 0 && !libraryStore.isSelected(book.id)) {
+      libraryStore.toggleSelection(book.id)
+    }
+  }
+  bulkEditSeriesMode.value = 'renameMembership'
+  bulkEditMatchName.value = name.value
   showBulkEditModal.value = true
 }
 
@@ -1536,6 +1575,14 @@ function closeBulkEdit() {
 
 function showOrganize() {
   organizeAudiobookIds.value = Array.from(selectedIdsForView.value)
+  showOrganizeModal.value = true
+}
+
+// Offered after a bulk series change: show the rename preview so the user sees the folder moves
+// before anything happens on disk.
+function organizeAfterBulkEdit(ids: number[]) {
+  showBulkEditModal.value = false
+  organizeAudiobookIds.value = ids
   showOrganizeModal.value = true
 }
 

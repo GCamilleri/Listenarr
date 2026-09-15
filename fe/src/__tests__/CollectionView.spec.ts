@@ -1610,4 +1610,61 @@ describe('CollectionView', () => {
     expect(card.text()).toContain('#2')
     expect(card.text()).not.toContain('#5')
   })
+  it("opens the bulk editor pre-set to rename this page's series (#953)", async () => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
+
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/', name: 'home', component: { template: '<div />' } },
+        { path: '/collection/:type/:name', name: 'collection', component: CollectionView },
+      ],
+    })
+    await router.push('/collection/series/Mistborn')
+    await router.isReady().catch(() => {})
+
+    const store = useLibraryStore()
+    store.audiobooks = [
+      {
+        id: 1,
+        title: 'The Final Empire',
+        authors: ['Brandon Sanderson'],
+        series: 'Mistborn',
+        seriesNumber: '1',
+        files: [],
+      },
+      {
+        id: 2,
+        title: 'The Well of Ascension',
+        authors: ['Brandon Sanderson'],
+        series: 'Mistborn',
+        seriesNumber: '2',
+        files: [],
+      },
+    ] as unknown as import('@/types').Audiobook[]
+    store.fetchLibrary = vi.fn(async () => undefined)
+
+    const wrapper = mount(CollectionView, {
+      global: {
+        plugins: [pinia, router],
+        stubs: ['EditAudiobookModal', 'CustomSelect', 'AddLibraryModal', 'BulkEditModal'],
+      },
+    })
+    await flushPromises()
+
+    const moveAll = wrapper.find('[data-testid="move-all-to-series"]')
+    expect(moveAll.exists()).toBe(true)
+
+    await moveAll.trigger('click')
+    await flushPromises()
+
+    const modal = wrapper.findComponent({ name: 'BulkEditModal' })
+    expect(modal.props('isOpen')).toBe(true)
+    expect(modal.props('initialSeriesMode')).toBe('renameMembership')
+    expect(modal.props('initialMatchName')).toBe('Mistborn')
+    // Every library book on the page is selected, in the order the page shows them.
+    expect(modal.props('selectedIdsOrdered')).toEqual([1, 2])
+    expect([...(modal.props('selectedIds') as Set<number>)]).toEqual([1, 2])
+  })
 })

@@ -115,6 +115,30 @@ namespace Listenarr.Tests.Builders
             return this;
         }
 
+        public AudiobookBuilder WithSeriesMembership(
+            string seriesName,
+            string? seriesNumber = null,
+            bool isPrimary = false,
+            string? seriesAsin = null)
+        {
+            var memberships = _audiobook.SeriesMemberships ??= [];
+            memberships.Add(new AudiobookSeriesMembership
+            {
+                SeriesName = seriesName,
+                SeriesNumber = seriesNumber,
+                SeriesAsin = seriesAsin,
+                IsPrimary = isPrimary,
+                SortOrder = memberships.Count
+            });
+            if (isPrimary)
+            {
+                _audiobook.Series = seriesName;
+                _audiobook.SeriesNumber = seriesNumber;
+            }
+
+            return this;
+        }
+
         public AudiobookBuilder WithQualityProfile(QualityProfile value)
         {
             _audiobook.QualityProfile = value;

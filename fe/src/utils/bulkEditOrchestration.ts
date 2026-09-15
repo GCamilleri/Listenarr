@@ -8,6 +8,8 @@
  * (at your option) any later version.
  */
 
+import type { AudiobookSeriesMembership, BulkUpdateValue } from '@/types'
+
 export type BulkPathChangeMode = 'None' | 'MetadataOnly' | 'Physical'
 export type BulkPathChangeOutcome =
   | 'none'
@@ -29,6 +31,7 @@ export interface BulkEditItemResult {
   pathChangeOutcome: BulkPathChangeOutcome | null
   moveJobId?: string | null
   resolvedDestination?: string | null
+  seriesMemberships?: AudiobookSeriesMembership[] | null
   errors: string[]
 }
 
@@ -42,7 +45,9 @@ export interface BulkEditApiItemResult extends Omit<
 
 export interface BulkEditOrchestrationRequest {
   ids: number[]
-  updates: Record<string, boolean | number | string>
+  updates: Record<string, BulkUpdateValue>
+  /** Per-audiobook updates layered over `updates` by the server, keyed by audiobook id. */
+  perIdOverrides?: Record<number, Record<string, BulkUpdateValue>>
   destinationRoot?: string | null
   moveFiles: boolean
   deleteEmptySource: boolean
@@ -51,8 +56,9 @@ export interface BulkEditOrchestrationRequest {
 export interface BulkEditOrchestrationDependencies {
   bulkUpdateAudiobooks(
     ids: number[],
-    updates: Record<string, boolean | number | string>,
+    updates: Record<string, BulkUpdateValue>,
     pathChange?: BulkPathChangeRequest,
+    perIdOverrides?: Record<number, Record<string, BulkUpdateValue>>,
   ): Promise<{ message: string; results: BulkEditApiItemResult[] }>
   trackQueuedJob(job: { jobId: string; audiobookId: number; target: string }): void
 }
@@ -79,7 +85,12 @@ export async function executeBulkEdit(
     }
   }
 
-  const response = await dependencies.bulkUpdateAudiobooks(request.ids, metadataUpdates, pathChange)
+  const response = await dependencies.bulkUpdateAudiobooks(
+    request.ids,
+    metadataUpdates,
+    pathChange,
+    request.perIdOverrides,
+  )
   const resultsById = new Map<number, BulkEditItemResult>(
     response.results.map((result) => {
       const errors = [...(result.errors ?? [])]
@@ -147,7 +158,7 @@ export async function executeBulkEdit(
   return { results: request.ids.map((id) => resultsById.get(id)!) }
 }
 
-function stringValue(value: boolean | number | string | undefined): string | null {
+function stringValue(value: BulkUpdateValue | undefined): string | null {
   return nonBlankString(typeof value === 'string' ? value : null)
 }
 

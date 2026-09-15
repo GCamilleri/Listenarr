@@ -171,12 +171,14 @@ public partial class RenameService
             && exception is not OutOfMemoryException
             && exception is not StackOverflowException)
         {
+            var (code, message) = DescribeOrganizeFailure(exception);
             _logger.LogError(
                 exception,
-                "Failed to organize file {FileId} for audiobook {AudiobookId}",
+                "Failed to organize file {FileId} for audiobook {AudiobookId}: {FailureCode}",
                 fileOperation.FileId,
-                audiobook.Id);
-            item.Error = "File organize operation failed.";
+                audiobook.Id,
+                code);
+            item.Error = message;
         }
 
         return item;

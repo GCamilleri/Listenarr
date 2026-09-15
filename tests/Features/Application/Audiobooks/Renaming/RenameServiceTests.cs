@@ -1007,10 +1007,15 @@ namespace Listenarr.Tests.Features.Application.Audiobooks.Renaming
             ]));
 
             Assert.False(result.Success);
-            Assert.Equal("File organize operation failed.", result.Error);
-            Assert.Equal(
-                "File organize operation failed.",
-                Assert.Single(result.RenamedFiles).Error);
+
+            // The failure now names the class of problem instead of the single opaque string
+            // every organize failure used to return. The redaction this test exists for is
+            // unchanged: the message is curated per exception type and never carries the
+            // exception's own text.
+            var expected = "The filesystem refused the operation. The destination may be "
+                + "read-only, out of space, or temporarily unavailable.";
+            Assert.Equal(expected, result.Error);
+            Assert.Equal(expected, Assert.Single(result.RenamedFiles).Error);
             Assert.DoesNotContain(secret, result.Error, StringComparison.OrdinalIgnoreCase);
             Assert.True(File.Exists(sourcePath));
             Assert.False(File.Exists(targetPath));

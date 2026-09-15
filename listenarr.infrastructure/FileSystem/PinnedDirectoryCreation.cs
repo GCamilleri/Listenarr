@@ -13,6 +13,13 @@ internal sealed partial class PinnedDirectoryCreation : IDisposable
     private const int AtRemovedirLinux = 0x200;
     private const int AtRemovedirMac = 0x80;
     private const uint RenameNoReplace = 1;
+
+    // Linux errno values used to tell "this filesystem cannot do that" apart from a real failure.
+    private const int ErrnoOperationNotPermitted = 1;
+    private const int ErrnoInvalidArgument = 22;
+    private const int ErrnoFunctionNotImplemented = 38;
+    private const int ErrnoOperationNotSupported = 95;
+
     private const uint RenameExchange = 2;
     private const uint RenameSwapMac = 2;
     private const uint RenameExclusiveMac = 4;

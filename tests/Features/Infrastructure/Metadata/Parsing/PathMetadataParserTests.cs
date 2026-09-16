@@ -16,6 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 using System.Text.Json;
+using Listenarr.Tests.Common;
 
 namespace Listenarr.Tests.Features.Infrastructure.Metadata.Parsing
 {
@@ -185,7 +186,7 @@ namespace Listenarr.Tests.Features.Infrastructure.Metadata.Parsing
             Assert.Null(result.Metadata.Title);
         }
 
-        [Fact]
+        [PosixShellScriptFact]
         public async Task ReadEmbeddedTagsAsync_NonZeroExit_ReportsExitCodeAndStderr()
         {
             var directory = Path.Join(Path.GetTempPath(), $"ffprobe-failure-{Guid.NewGuid():N}");
@@ -196,6 +197,8 @@ namespace Listenarr.Tests.Features.Infrastructure.Metadata.Parsing
                 await File.WriteAllTextAsync(
                     script,
                     "#!/bin/sh\necho 'Invalid data found when processing input' 1>&2\nexit 3\n");
+                // Never false here, because PosixShellScriptFact skips Windows. The platform
+                // analyser cannot see through the attribute, so the guard stays.
                 if (!OperatingSystem.IsWindows())
                 {
                     File.SetUnixFileMode(

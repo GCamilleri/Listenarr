@@ -22,6 +22,22 @@ public sealed class LinuxFactAttribute : FactAttribute
     }
 }
 
+/// <summary>
+/// For tests whose fixture is a fake executable. The only stand-in a test can author at run time
+/// is a shell script with a shebang, which Windows cannot start: CreateProcess rejects both a
+/// .sh and a .cmd without a shell, and the probe under test redirects stderr so it cannot use one.
+/// </summary>
+public sealed class PosixShellScriptFactAttribute : FactAttribute
+{
+    public PosixShellScriptFactAttribute()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            Skip = "This test needs a fake executable, which has to be a POSIX shell script.";
+        }
+    }
+}
+
 public sealed class WindowsTheoryAttribute : TheoryAttribute
 {
     public WindowsTheoryAttribute()

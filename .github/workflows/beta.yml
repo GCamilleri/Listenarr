@@ -123,16 +123,13 @@ jobs:
       pr_title: ${{ needs.beta-build.outputs.pr_title }}
       pr_body_raw: ${{ needs.beta-build.outputs.pr_body_raw }}
       discord_text: A new beta build has been released for docker.
+      # GHCR only, in whichever account is running this. Docker Hub and ATCR pointed at the
+      # upstream maintainer's personal namespaces, so a fork had no credentials for them and
+      # the publish step failed on every beta push.
       docker_tags: |
-        docker.io/therobbiedavis/listenarr:beta
-        docker.io/therobbiedavis/listenarr:beta-${{ needs.beta-build.outputs.version }}
-        docker.io/therobbiedavis/listenarr:beta-${{ needs.beta-build.outputs.version }}-${{ needs.beta-build.outputs.short_sha }}
-        ghcr.io/listenarrs/listenarr:beta
-        ghcr.io/listenarrs/listenarr:beta-${{ needs.beta-build.outputs.version }}
-        ghcr.io/listenarrs/listenarr:beta-${{ needs.beta-build.outputs.version }}-${{ needs.beta-build.outputs.short_sha }}
-        atcr.io/therobbiedavis.com/listenarr:beta
-        atcr.io/therobbiedavis.com/listenarr:beta-${{ needs.beta-build.outputs.version }}
-        atcr.io/therobbiedavis.com/listenarr:beta-${{ needs.beta-build.outputs.version }}-${{ needs.beta-build.outputs.short_sha }}
+        ghcr.io/${{ github.repository_owner }}/listenarr:beta
+        ghcr.io/${{ github.repository_owner }}/listenarr:beta-${{ needs.beta-build.outputs.version }}
+        ghcr.io/${{ github.repository_owner }}/listenarr:beta-${{ needs.beta-build.outputs.version }}-${{ needs.beta-build.outputs.short_sha }}
     secrets:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}

@@ -136,7 +136,7 @@ namespace Listenarr.Api.Features.Search
             // of the author's whole catalogue, so it no longer floors below a usable page.
             var candidateLimit = req.Cap.HasValue ? Math.Clamp(req.Cap.Value, 50, 2000) : 200;
             var returnLimit = req.Pagination != null && req.Pagination.Limit > 0 ? Math.Clamp(req.Pagination.Limit, 1, 1000) : 50;
-            var results = await _searchService.IntelligentSearchAsync(query, candidateLimit, returnLimit, region: region, language: language, ct: httpContext.RequestAborted, durationSeconds: req.DurationSeconds);
+            var results = await _searchService.IntelligentSearchAsync(query, candidateLimit, returnLimit, region: region, language: language, ct: httpContext.RequestAborted, durationSeconds: ToWholeSeconds(req.DurationSeconds));
 
             await _responseMapper.NormalizeMetadataResultImagesAsync(results, httpContext, "result");
             results = ApplySeriesFilter(req, results);
@@ -157,6 +157,23 @@ namespace Listenarr.Api.Features.Search
             {
                 System.Diagnostics.Debug.WriteLine($"SearchController advanced-search debug logging failed: {ex.Message}");
             }
+        }
+
+        // The scorer compares runtimes in whole minutes, so sub-second precision buys nothing.
+        // Anything that cannot survive the conversion is dropped rather than clamped, because a
+        // nonsense runtime would skew the ranking more than having no runtime at all.
+        private static int? ToWholeSeconds(double? durationSeconds)
+        {
+            if (durationSeconds is not { } seconds
+                || double.IsNaN(seconds)
+                || double.IsInfinity(seconds)
+                || seconds <= 0
+                || seconds > int.MaxValue)
+            {
+                return null;
+            }
+
+            return (int)Math.Round(seconds, MidpointRounding.AwayFromZero);
         }
 
         private static bool JsonObjectHasProperty(JsonElement element, string propertyName)

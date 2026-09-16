@@ -224,6 +224,60 @@ namespace Listenarr.Tests.Features.Api.Features.Search
         }
 
         [Fact]
+        public async Task AdvancedSearch_FractionalDurationSeconds_IsAcceptedAndRoundedToWholeSeconds()
+        {
+            // Given a runtime taken straight from an unmatched scan row, which carries ffprobe's
+            // fractional container duration. Binding this to an int rejected the whole body and
+            // turned every library-import match into a 400.
+            var mockSearch = new Mock<ISearchService>();
+            mockSearch.Setup(s => s.IntelligentSearchAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<double>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<System.Threading.CancellationToken>(), It.IsAny<int?>()))
+                      .ReturnsAsync(new List<MetadataSearchResult>());
+
+            var controller = CreateController(mockSearch, metadataService: new Mock<IAudiobookMetadataService>());
+
+            var reqJson = System.Text.Json.JsonSerializer.SerializeToElement(new
+            {
+                mode = "advanced",
+                title = "The Final Empire",
+                author = "Brandon Sanderson",
+                durationSeconds = 89940.62
+            });
+
+            // When the advanced search runs.
+            var res = await controller.Search(reqJson);
+
+            // Then the request is not rejected and the scorer receives whole seconds.
+            Assert.IsNotType<BadRequestObjectResult>(res.Result);
+            mockSearch.Verify(s => s.IntelligentSearchAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<double>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<System.Threading.CancellationToken>(), 89941), Times.Once);
+        }
+
+        [Fact]
+        public async Task AdvancedSearch_UnusableDurationSeconds_SearchesWithoutARuntime()
+        {
+            // Given a zero runtime, which a scan row carries when every probe failed.
+            var mockSearch = new Mock<ISearchService>();
+            mockSearch.Setup(s => s.IntelligentSearchAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<double>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<System.Threading.CancellationToken>(), It.IsAny<int?>()))
+                      .ReturnsAsync(new List<MetadataSearchResult>());
+
+            var controller = CreateController(mockSearch, metadataService: new Mock<IAudiobookMetadataService>());
+
+            var reqJson = System.Text.Json.JsonSerializer.SerializeToElement(new
+            {
+                mode = "advanced",
+                title = "The Final Empire",
+                author = "Brandon Sanderson",
+                durationSeconds = 0.0
+            });
+
+            // When the advanced search runs.
+            var res = await controller.Search(reqJson);
+
+            // Then it still searches, ranking on the remaining signals rather than a bogus runtime.
+            Assert.IsNotType<BadRequestObjectResult>(res.Result);
+            mockSearch.Verify(s => s.IntelligentSearchAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<double>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<System.Threading.CancellationToken>(), null), Times.Once);
+        }
+
+        [Fact]
         public async Task AdvancedSearch_AsinWithoutRegion_Uses_ConfiguredDefaultRegion()
         {
             var mockSearch = new Mock<ISearchService>();

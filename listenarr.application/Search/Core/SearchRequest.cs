@@ -59,7 +59,9 @@ namespace Listenarr.Application.Search.Core
 
         // Known runtime of the files being matched, in seconds. Used to rank candidates: it is
         // what separates Mistborn (1499 min) from Mistborn: Secret History (329 min).
-        public int? DurationSeconds { get; set; }
+        // Fractional, because it comes from ffprobe's container duration via the unmatched scan
+        // row, which reports seconds to two decimal places.
+        public double? DurationSeconds { get; set; }
     }
 
     // Options to control MyAnonamouse (MyAnonamouse.net) search behavior

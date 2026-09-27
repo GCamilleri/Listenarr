@@ -24,7 +24,7 @@ namespace Listenarr.Application.Downloads.Queue
     /// Provides download queues from download clients
     /// Cache results for efficiency
     /// </summary>
-    public class DownloadQueueService(
+    public partial class DownloadQueueService(
         IMemoryCache cache,
         IConfigurationService configurationService,
         IDownloadRepository downloadRepository,
@@ -113,6 +113,15 @@ namespace Listenarr.Application.Downloads.Queue
                     }
 
                     var mappedQueueItems = new List<QueueItem>();
+
+                    // Identifiers present in this poll. Used to tell a record that is still bound to
+                    // a live client item apart from one whose item has gone away; neither may be
+                    // rebound on title similarity, but only the first is worth saying so about.
+                    var liveClientItemIds = clientQueue
+                        .Select(item => item.Id)
+                        .Where(id => !string.IsNullOrWhiteSpace(id))
+                        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
                     foreach (var queueItem in clientQueue)
                     {
                         var ownershipEstablished = false;
@@ -123,9 +132,10 @@ namespace Listenarr.Application.Downloads.Queue
                                 queueItem.CompletionTime = DateTime.UtcNow;
                             }
 
-                            var matchedDownload = DownloadQueueMetadataMatcher.FindBestMatchingDownload(queueItem, client, allDownloadsForMatching, logger);
-                            if (matchedDownload != null)
+                            var match = DownloadQueueMetadataMatcher.FindBestMatchingDownload(queueItem, client, allDownloadsForMatching, logger);
+                            if (match != null)
                             {
+                                var matchedDownload = match.Value.Download;
                                 var originalClientId = queueItem.Id;
                                 ownershipEstablished = true;
 
@@ -136,7 +146,12 @@ namespace Listenarr.Application.Downloads.Queue
                                 // that we already proved belongs to Listenarr.
                                 queueItem.Id = matchedDownload.Id;
 
-                                await PersistDiscoveredClientIdentifiersAsync(matchedDownload, client, originalClientId, allKnownClientItemIds);
+                                await PersistDiscoveredClientIdentifiersAsync(
+                                    match.Value,
+                                    client,
+                                    originalClientId,
+                                    allKnownClientItemIds,
+                                    liveClientItemIds);
 
                                 if (!string.IsNullOrWhiteSpace(matchedDownload.Title))
                                 {
@@ -415,42 +430,5 @@ namespace Listenarr.Application.Downloads.Queue
             DownloadStatus.Moved => "moved",
             _ => status.ToString().ToLowerInvariant()
         };
-
-        private async Task PersistDiscoveredClientIdentifiersAsync(
-            Download matchedDownload,
-            DownloadClientConfiguration client,
-            string? originalClientId,
-            HashSet<string> allKnownClientItemIds)
-        {
-            if (matchedDownload == null ||
-                string.IsNullOrWhiteSpace(originalClientId) ||
-                string.Equals(originalClientId, matchedDownload.Id, StringComparison.OrdinalIgnoreCase))
-            {
-                return;
-            }
-
-            matchedDownload.Metadata ??= new Dictionary<string, object>();
-
-            var existingClientDownloadId = DownloadQueueMetadataMatcher.GetMetadataString(matchedDownload.Metadata, "ClientDownloadId");
-            if (!string.Equals(existingClientDownloadId, originalClientId, StringComparison.OrdinalIgnoreCase))
-            {
-                matchedDownload.Metadata["ClientDownloadId"] = originalClientId;
-                await downloadRepository.UpdateMetadataAsync(matchedDownload.Id, "ClientDownloadId", originalClientId);
-            }
-
-            allKnownClientItemIds.Add(originalClientId);
-
-            if (string.Equals(client.Type, "qbittorrent", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(client.Type, "transmission", StringComparison.OrdinalIgnoreCase))
-            {
-                var existingTorrentHash = DownloadQueueMetadataMatcher.GetMetadataString(matchedDownload.Metadata, "TorrentHash");
-                if (!string.Equals(existingTorrentHash, originalClientId, StringComparison.OrdinalIgnoreCase))
-                {
-                    matchedDownload.Metadata["TorrentHash"] = originalClientId;
-                    await downloadRepository.UpdateMetadataAsync(matchedDownload.Id, "TorrentHash", originalClientId);
-                }
-            }
-        }
-
     }
 }

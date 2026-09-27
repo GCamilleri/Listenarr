@@ -220,10 +220,10 @@ public sealed class NativeTestWorkflowContractTests : BaseTests
         var script = NormalizeLineEndings(File.ReadAllText(Path.Join(
             repositoryRoot,
             "scripts",
-            "run-native-backend-tests.ps1")));
+            "run-native-backend-tests.sh")));
 
         Assert.Contains(
-            "$env:LISTENARR_REQUIRED_NATIVE_TEST_CAPABILITIES",
+            "LISTENARR_REQUIRED_NATIVE_TEST_CAPABILITIES",
             script,
             StringComparison.Ordinal);
         Assert.Contains(
@@ -240,19 +240,21 @@ public sealed class NativeTestWorkflowContractTests : BaseTests
             StringComparison.Ordinal);
         Assert.Equal(
             2,
-            Regex.Matches(script, @"(?m)^\s*& dotnet test ").Count);
+            Regex.Matches(script, @"(?m)^\s*dotnet test ").Count);
 
+        // The full suite runs unfiltered and its exit code is what the script
+        // exits with, so a failure can never be swallowed.
         var fullSuiteIndex = script.IndexOf(
-            "& dotnet test listenarr.slnx",
+            "dotnet test listenarr.slnx",
             StringComparison.Ordinal);
         Assert.True(fullSuiteIndex >= 0);
         var fullSuiteCommand = script[fullSuiteIndex..];
         Assert.DoesNotContain("--filter", fullSuiteCommand, StringComparison.Ordinal);
         Assert.Contains(
-            "$exitCode = $LASTEXITCODE",
+            "exit_code=$?",
             fullSuiteCommand,
             StringComparison.Ordinal);
-        Assert.Contains("exit $exitCode", fullSuiteCommand, StringComparison.Ordinal);
+        Assert.Contains("exit \"$exit_code\"", fullSuiteCommand, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -269,7 +271,7 @@ public sealed class NativeTestWorkflowContractTests : BaseTests
             Path.GetFullPath(Path.Join(
                 repositoryRoot,
                 "scripts",
-                "run-native-backend-tests.ps1")),
+                "run-native-backend-tests.sh")),
             Path.GetFullPath(Path.Join(
                 repositoryRoot,
                 ".github",
@@ -418,8 +420,12 @@ public sealed class NativeTestWorkflowContractTests : BaseTests
             $"LISTENARR_REQUIRED_NATIVE_TEST_CAPABILITIES: '{RequiredCapabilities}'",
             job,
             StringComparison.Ordinal);
+        // The runner is bash, not pwsh: pwsh ships on the GitHub runner images
+        // but not on a typical developer machine, so the PowerShell version of
+        // this script could not be run or syntax-checked locally.
+        Assert.Contains("shell: bash", job, StringComparison.Ordinal);
         Assert.Contains(
-            "pwsh -NoProfile -File scripts/run-native-backend-tests.ps1",
+            "scripts/run-native-backend-tests.sh",
             job,
             StringComparison.Ordinal);
         Assert.DoesNotContain("dotnet test", job, StringComparison.Ordinal);

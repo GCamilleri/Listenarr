@@ -71,6 +71,8 @@ Pre-push (`.husky/pre-push`):
 
 The formatter rejects alignment padding. Write `["ca"] = ("www.audible.ca", "www.amazon.ca")`, never spaces added to line values into columns. `dotnet format` fixes it.
 
+**Restore before you format.** `dotnet format listenarr.slnx --no-restore` against a tree that has not been restored compiles against missing assemblies, so the "remove unnecessary usings" fixer cannot resolve types and strips real `using` directives across the whole repository. It did exactly that once here: 482 files changed, `tests/GlobalUsings.cs` lost 62 lines, and the only signal was a wall of `Unable to fix CS1503`. Run `dotnet restore listenarr.slnx` first, or drop `--no-restore`. With a restored tree it is well behaved and `--verify-no-changes` exits 0. If in doubt, check `git diff --stat` before you stage: the fixer touching files you never opened means it misfired, so revert rather than commit.
+
 ## Branching
 
 `canary` is the integration branch and the target for all feature PRs. `beta` is for stabilisation by org members, `main` is written by the release workflow only. Branch off the latest `canary`, name branches after what they do (`123-audible-integration`, `bugfix/search-results`). PRs against `canary` need exactly one of the `patch`, `minor` or `major` labels.

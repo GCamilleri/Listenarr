@@ -57,6 +57,16 @@ exec docker run --rm -i \
   sh -euc '
     # Sync every run so local edits are what actually gets tested. bin/obj stay
     # in the volume between runs so the build is incremental.
+    #
+    # Drop every source file first. tar only adds and overwrites, so without
+    # this a file deleted from the checkout lingers in the volume for ever and
+    # tests keep passing against a file that no longer exists. bin and obj are
+    # pruned so the incremental build survives; the empty directories left
+    # behind are harmless and tar refills them.
+    find /src -mindepth 1 \
+      \( -type d \( -name bin -o -name obj \) \) -prune -o \
+      -type f -print0 | xargs -0 --no-run-if-empty rm -f
+
     tar -C /mnt \
       --exclude=node_modules --exclude=.git --exclude=.claude --exclude=bin \
       --exclude=obj --exclude=dist \

@@ -12,6 +12,7 @@ internal sealed partial class AudiobookScanService(
     IFileSystem fileSystem,
     IFileSystemSemanticsResolver semanticsResolver,
     IScanPathAuthorizationService pathAuthorizationService,
+    IRootFolderService rootFolderService,
     ILogger<AudiobookScanService> logger,
     IWeakStorageScanCandidateStore? weakStorageScanCandidateStore = null)
     : IAudiobookScanService

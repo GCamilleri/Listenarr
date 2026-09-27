@@ -52,6 +52,28 @@ internal static partial class ScanFileDiscovery
         var identifierTokens = BuildExpectedIdentifierTokens(audiobook);
         var preliminary = new List<AttributionEvidence>();
 
+        // A boundary found only because some ancestor directory is named like the audiobook is weak
+        // evidence: a series folder, an author folder or a box-set folder can carry the same name.
+        // Boundaries that come from the audiobook's own pinned folder, or from the folder an already
+        // owned file lives in, are not guesses and keep the original reach.
+        var pinnedBasePath = TryCanonicalize(audiobook.BasePath, semantics);
+        var ownedDirectories = new HashSet<string>(
+            owned
+                .Select(Path.GetDirectoryName)
+                .Where(directory => !string.IsNullOrWhiteSpace(directory))
+                .Select(directory => directory!),
+            semantics.Comparer);
+
+        bool BoundaryIsProven(string boundary) =>
+            (pinnedBasePath != null
+                && FileSystemPathIdentity.IsSameOrInside(boundary, pinnedBasePath, semantics))
+            || ownedDirectories.Contains(boundary);
+
+        // Anything inside the audiobook's own folder belongs to it whatever shape the boundary has.
+        bool SitsInsidePinnedBasePath(string path) =>
+            pinnedBasePath != null
+            && FileSystemPathIdentity.IsSameOrInside(path, pinnedBasePath, semantics);
+
         foreach (var candidate in enumeration.Candidates)
         {
             var canonicalCandidate = FileSystemPathIdentity.Canonicalize(
@@ -106,6 +128,17 @@ internal static partial class ScanFileDiscovery
                 requireAuthorContext: true);
             if (titleBoundary != null)
             {
+                if (!BoundaryIsProven(titleBoundary)
+                    && !SitsInsidePinnedBasePath(candidate)
+                    && !FileSitsInBoundaryFolder(candidate, titleBoundary, semantics))
+                {
+                    issues.Add(new ScanDiscoveryIssue(
+                        ScanDiscoveryIssueKind.OutsideStableIdentifierBoundary,
+                        candidate,
+                        "The file sits in a subfolder of a title-matching ancestor rather than in the book folder itself and was not attributed."));
+                    continue;
+                }
+
                 preliminary.Add(new AttributionEvidence(
                     candidate,
                     titleBoundary,
@@ -205,8 +238,17 @@ internal static partial class ScanFileDiscovery
             }
         }
 
+        var identifierBoundarySet = new HashSet<string>(
+            identifierBoundaries,
+            semantics.Comparer);
         foreach (var boundary in strongBoundaries)
         {
+            // Identifier boundaries carry the audiobook's own ASIN or OpenLibrary id, so everything
+            // beneath them belongs to it. A title-derived boundary only speaks for the files in the
+            // folder itself, otherwise one audiobook named after its series claims every book in it.
+            var boundaryReachesSubfolders =
+                identifierBoundarySet.Contains(boundary)
+                || BoundaryIsProven(boundary);
             foreach (var candidate in enumeration.Candidates)
             {
                 var canonicalCandidate = FileSystemPathIdentity.Canonicalize(
@@ -215,6 +257,14 @@ internal static partial class ScanFileDiscovery
                 if (ownershipByCanonicalPath != null
                     && ownershipByCanonicalPath.TryGetValue(canonicalCandidate, out var ownerId)
                     && ownerId != audiobook.Id)
+                {
+                    continue;
+                }
+
+                if (!boundaryReachesSubfolders
+                    && !owned.Contains(canonicalCandidate)
+                    && !SitsInsidePinnedBasePath(candidate)
+                    && !FileSitsInBoundaryFolder(candidate, boundary, semantics))
                 {
                     continue;
                 }
@@ -245,6 +295,53 @@ internal static partial class ScanFileDiscovery
             selectedStableIdentifierBoundary,
             identifierBoundaries.Count > 1,
             issues);
+    }
+
+    /// <summary>
+    /// True when the file lives in the boundary directory itself, or in a disc subfolder of it.
+    /// A file any deeper belongs to a folder of its own, which is another book far more often than
+    /// it is a stray part of this one.
+    /// </summary>
+    internal static bool FileSitsInBoundaryFolder(
+        string candidate,
+        string boundary,
+        FileSystemPathSemantics semantics)
+    {
+        var directory = Path.GetDirectoryName(candidate);
+        if (string.IsNullOrWhiteSpace(directory))
+        {
+            return false;
+        }
+
+        if (FileSystemPathIdentity.AreEquivalent(directory, boundary, semantics))
+        {
+            return true;
+        }
+
+        var parent = Path.GetDirectoryName(directory);
+        return !string.IsNullOrWhiteSpace(parent)
+            && FileSystemPathIdentity.AreEquivalent(parent, boundary, semantics)
+            && DiscFolderRules.IsDiscDirectory(Path.GetFileName(directory) ?? string.Empty);
+    }
+
+    private static string? TryCanonicalize(
+        string? path,
+        FileSystemPathSemantics semantics)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return null;
+        }
+
+        try
+        {
+            return FileSystemPathIdentity.Canonicalize(path, semantics.Syntax);
+        }
+        catch (Exception exception) when (exception is
+            ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return null;
+        }
     }
 
     internal static bool CanClaimNewPath(

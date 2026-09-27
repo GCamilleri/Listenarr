@@ -220,7 +220,7 @@ namespace Listenarr.Infrastructure.Library.Scanning
                 .GetRequiredService<IScanPathAuthorizationService>();
             var authorization =
                 job.AuthorizationMode == ScanAuthorizationMode.ResolveCurrentAudiobookPath
-                    ? await authorizationService.ResolveDefaultAsync(
+                    ? await authorizationService.ResolveAudiobookScopedAsync(
                         audiobook.BasePath,
                         cancellationToken)
                     : await authorizationService.AuthorizeAsync(

@@ -54,6 +54,7 @@ import type {
   SeriesLookupResponse,
   ManualImportPreviewResponse,
   ManualImportRequest,
+  AddToLibraryOptions,
   ManualImportResult,
   RootFolder,
   QualityScore,
@@ -1194,13 +1195,7 @@ class ApiService {
 
   async addToLibrary(
     metadata: AudibleBookMetadata,
-    options?: {
-      monitored?: boolean
-      qualityProfileId?: number
-      autoSearch?: boolean
-      searchResult?: SearchResult
-      destinationPath?: string
-    },
+    options?: AddToLibraryOptions,
   ): Promise<{ message: string; audiobook: Audiobook }> {
     const normalizedMetadata = this.normalizeMetadataForApi(metadata)
     const sr = options?.searchResult
@@ -1217,6 +1212,7 @@ class ApiService {
       autoSearch: options?.autoSearch ?? false,
       searchResult: normalizedSearchResult,
       destinationPath: options?.destinationPath,
+      rootFolderId: options?.rootFolderId,
     }
     return this.request<{ message: string; audiobook: Audiobook }>('/library/add', {
       method: 'POST',

@@ -260,6 +260,10 @@ namespace Listenarr.Tests.Features.Api.Features.Library
 
             var sourcePath = FileService.GetTempDirectory("listenarr-update-basepath-source");
             var targetPath = Path.Join(rootPath, "Author", "Title");
+            // The rewrite only relabels stored references. The registered file has to be at
+            // the new base already, or the library would point at a path with nothing on it.
+            Directory.CreateDirectory(targetPath);
+            await File.WriteAllTextAsync(Path.Join(targetPath, "book.m4b"), "book");
             var unrelatedPath = Path.Join(FileService.GetTempPath(), "outside", "bonus.mp3");
             var audiobook = await _audiobookRepository.AddAsync(new Audiobook
             {
@@ -308,6 +312,8 @@ namespace Listenarr.Tests.Features.Api.Features.Library
 
             var sourcePath = FileService.GetTempDirectory("listenarr-update-stale-path-source");
             var targetPath = Path.Join(rootPath, "Author", "Title");
+            Directory.CreateDirectory(targetPath);
+            await File.WriteAllTextAsync(Path.Join(targetPath, "book.m4b"), "book");
             var staleFilePath = Path.Join(sourcePath, "book.m4b");
             var staleImagePath = Path.Join(sourcePath, "cover.jpg");
             var audiobook = await _audiobookRepository.AddAsync(new Audiobook

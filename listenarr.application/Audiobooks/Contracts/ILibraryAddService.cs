@@ -37,6 +37,12 @@ namespace Listenarr.Application.Audiobooks.Contracts
 
         public string? DestinationPath { get; set; }
 
+        /// <summary>
+        /// Place the book under this root folder using the configured folder naming pattern.
+        /// Ignored when <see cref="DestinationPath"/> names an exact folder.
+        /// </summary>
+        public int? RootFolderId { get; set; }
+
         public SearchResult? SearchResult { get; set; }
 
         public string HistorySource { get; set; } = "AddNew";

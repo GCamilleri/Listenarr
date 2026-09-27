@@ -20,6 +20,24 @@ namespace Listenarr.Tests.Features.Api.Features.Library;
 [Trait("Category", "LibraryController")]
 public sealed class LibraryUpdateWorkflowTests : BaseTests
 {
+    private static IRootFolderService CreateEmptyRootFolderService()
+    {
+        var rootFolderService = new Mock<IRootFolderService>();
+        rootFolderService.Setup(service => service.GetAllAsync()).ReturnsAsync([]);
+        return rootFolderService.Object;
+    }
+
+    private static IAudiobookFileRepository CreateEmptyAudiobookFileRepository()
+    {
+        var fileRepository = new Mock<IAudiobookFileRepository>();
+        fileRepository
+            .Setup(repository => repository.GetByAudiobookIdAsync(
+                It.IsAny<int>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+        return fileRepository.Object;
+    }
+
     [WindowsFact]
     public async Task UpdateAsync_ForeignPersistedBasePathAlias_RoutesThroughAuthoritativeRewrite()
     {
@@ -71,6 +89,9 @@ public sealed class LibraryUpdateWorkflowTests : BaseTests
             rewriteService.Object,
             operationCoordinator,
             new FileSystemSemanticsResolver(),
+            CreateEmptyRootFolderService(),
+            CreateEmptyAudiobookFileRepository(),
+            new LocalFileSystem(),
             NullLogger<LibraryUpdateWorkflow>.Instance);
 
         var result = await workflow.UpdateAsync(
@@ -135,6 +156,9 @@ public sealed class LibraryUpdateWorkflowTests : BaseTests
             rewriteService.Object,
             operationCoordinator,
             new FileSystemSemanticsResolver(),
+            CreateEmptyRootFolderService(),
+            CreateEmptyAudiobookFileRepository(),
+            new LocalFileSystem(),
             NullLogger<LibraryUpdateWorkflow>.Instance);
 
         var result = await workflow.UpdateAsync(id, new AudiobookUpdateRequest { BasePath = target });
@@ -196,6 +220,9 @@ public sealed class LibraryUpdateWorkflowTests : BaseTests
             rewriteService.Object,
             operationCoordinator,
             new FileSystemSemanticsResolver(),
+            CreateEmptyRootFolderService(),
+            CreateEmptyAudiobookFileRepository(),
+            new LocalFileSystem(),
             NullLogger<LibraryUpdateWorkflow>.Instance);
 
         var result = await workflow.UpdateAsync(
@@ -263,6 +290,9 @@ public sealed class LibraryUpdateWorkflowTests : BaseTests
             rewriteService.Object,
             operationCoordinator,
             new FileSystemSemanticsResolver(),
+            CreateEmptyRootFolderService(),
+            CreateEmptyAudiobookFileRepository(),
+            new LocalFileSystem(),
             NullLogger<LibraryUpdateWorkflow>.Instance);
 
         var result = await workflow.UpdateAsync(
@@ -279,5 +309,180 @@ public sealed class LibraryUpdateWorkflowTests : BaseTests
         Assert.True(after.Abridged);
         Assert.False(after.Monitored);
         repository.Verify(candidate => candidate.UpdateAsync(after), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_BasePathEqualToConfiguredRoot_IsRejected()
+    {
+        var id = 45;
+        var root = Path.Join(Path.GetTempPath(), $"listenarr-update-root-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+        var before = new Audiobook
+        {
+            Id = id,
+            Title = "Book",
+            BasePath = Path.Join(root, "Author", "Title")
+        };
+
+        var repository = new Mock<IAudiobookRepository>(MockBehavior.Strict);
+        repository.Setup(candidate => candidate.GetForUpdateSnapshotAsync(
+                id,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(before);
+        var rewriteService = new Mock<IAudiobookDestinationRewriteService>(MockBehavior.Strict);
+        var rootFolderService = new Mock<IRootFolderService>();
+        rootFolderService.Setup(service => service.GetAllAsync()).ReturnsAsync(
+            [new RootFolder { Id = 1, Name = "Library", Path = root }]);
+
+        var services = new ServiceCollection();
+        services.AddSingleton(repository.Object);
+        using var provider = services.BuildServiceProvider();
+        using var operationCoordinator = new AudiobookOperationCoordinator();
+        var workflow = new LibraryUpdateWorkflow(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            rewriteService.Object,
+            operationCoordinator,
+            new FileSystemSemanticsResolver(),
+            rootFolderService.Object,
+            CreateEmptyAudiobookFileRepository(),
+            new LocalFileSystem(),
+            NullLogger<LibraryUpdateWorkflow>.Instance);
+
+        var result = await workflow.UpdateAsync(
+            id,
+            new AudiobookUpdateRequest { BasePath = root });
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Contains(
+            "destination_base_path_is_root",
+            System.Text.Json.JsonSerializer.Serialize(badRequest.Value),
+            StringComparison.Ordinal);
+        rewriteService.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task UpdateAsync_BasePathWithoutTheRegisteredFiles_IsRejected()
+    {
+        var id = 46;
+        var root = Path.Join(Path.GetTempPath(), $"listenarr-update-missing-{Guid.NewGuid():N}");
+        var source = Path.Join(root, "Author", "Original");
+        var target = Path.Join(root, "Author", "Empty Target");
+        Directory.CreateDirectory(source);
+        Directory.CreateDirectory(target);
+        var registeredFile = Path.Join(source, "book.m4b");
+        await File.WriteAllTextAsync(registeredFile, "book");
+        var before = new Audiobook
+        {
+            Id = id,
+            Title = "Book",
+            BasePath = source
+        };
+
+        var repository = new Mock<IAudiobookRepository>(MockBehavior.Strict);
+        repository.Setup(candidate => candidate.GetForUpdateSnapshotAsync(
+                id,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(before);
+        var rewriteService = new Mock<IAudiobookDestinationRewriteService>(MockBehavior.Strict);
+        var rootFolderService = new Mock<IRootFolderService>();
+        rootFolderService.Setup(service => service.GetAllAsync()).ReturnsAsync(
+            [new RootFolder { Id = 1, Name = "Library", Path = root }]);
+        var fileRepository = new Mock<IAudiobookFileRepository>();
+        fileRepository
+            .Setup(candidate => candidate.GetByAudiobookIdAsync(
+                id,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync([new AudiobookFile { Id = 1, AudiobookId = id, Path = registeredFile }]);
+
+        var services = new ServiceCollection();
+        services.AddSingleton(repository.Object);
+        using var provider = services.BuildServiceProvider();
+        using var operationCoordinator = new AudiobookOperationCoordinator();
+        var workflow = new LibraryUpdateWorkflow(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            rewriteService.Object,
+            operationCoordinator,
+            new FileSystemSemanticsResolver(),
+            rootFolderService.Object,
+            fileRepository.Object,
+            new LocalFileSystem(),
+            NullLogger<LibraryUpdateWorkflow>.Instance);
+
+        var result = await workflow.UpdateAsync(
+            id,
+            new AudiobookUpdateRequest { BasePath = target });
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Contains(
+            "destination_base_path_missing_files",
+            System.Text.Json.JsonSerializer.Serialize(badRequest.Value),
+            StringComparison.Ordinal);
+        Assert.True(File.Exists(registeredFile));
+        rewriteService.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task UpdateAsync_BasePathWhereTheRegisteredFilesAlreadyAre_IsAllowed()
+    {
+        var id = 47;
+        var root = Path.Join(Path.GetTempPath(), $"listenarr-update-present-{Guid.NewGuid():N}");
+        var source = Path.Join(root, "Author", "Original");
+        var target = Path.Join(root, "Author", "Populated Target");
+        Directory.CreateDirectory(source);
+        Directory.CreateDirectory(target);
+        var registeredFile = Path.Join(source, "book.m4b");
+        await File.WriteAllTextAsync(registeredFile, "book");
+        await File.WriteAllTextAsync(Path.Join(target, "book.m4b"), "book");
+        var before = new Audiobook { Id = id, Title = "Book", BasePath = source };
+        var after = new Audiobook { Id = id, Title = "Book", BasePath = target };
+
+        var repository = new Mock<IAudiobookRepository>(MockBehavior.Strict);
+        repository.Setup(candidate => candidate.GetForUpdateSnapshotAsync(
+                id,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(before);
+        repository.Setup(candidate => candidate.GetByIdAsync(id)).ReturnsAsync(after);
+        var rewriteService = new Mock<IAudiobookDestinationRewriteService>(MockBehavior.Strict);
+        rewriteService
+            .Setup(candidate => candidate.RewriteDestinationAsync(
+                id,
+                target,
+                source,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AudiobookDestinationRewriteResult(id, target, source));
+        var rootFolderService = new Mock<IRootFolderService>();
+        rootFolderService.Setup(service => service.GetAllAsync()).ReturnsAsync(
+            [new RootFolder { Id = 1, Name = "Library", Path = root }]);
+        var fileRepository = new Mock<IAudiobookFileRepository>();
+        fileRepository
+            .Setup(candidate => candidate.GetByAudiobookIdAsync(
+                id,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync([new AudiobookFile { Id = 1, AudiobookId = id, Path = registeredFile }]);
+
+        var services = new ServiceCollection();
+        services.AddSingleton(repository.Object);
+        using var provider = services.BuildServiceProvider();
+        using var operationCoordinator = new AudiobookOperationCoordinator();
+        var workflow = new LibraryUpdateWorkflow(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            rewriteService.Object,
+            operationCoordinator,
+            new FileSystemSemanticsResolver(),
+            rootFolderService.Object,
+            fileRepository.Object,
+            new LocalFileSystem(),
+            NullLogger<LibraryUpdateWorkflow>.Instance);
+
+        var result = await workflow.UpdateAsync(
+            id,
+            new AudiobookUpdateRequest { BasePath = target });
+
+        Assert.IsType<OkObjectResult>(result);
+        rewriteService.Verify(candidate => candidate.RewriteDestinationAsync(
+            id,
+            target,
+            source,
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 }

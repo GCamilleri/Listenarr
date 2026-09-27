@@ -750,8 +750,35 @@ export const useLibraryImportStore = defineStore('libraryImport', () => {
     }
   }
 
+  /**
+   * Structured backend rejections carry a `code` the user can act on. Without this the row
+   * error was the raw `API error: 400 {...}` string.
+   */
+  function describeImportFailure(error: unknown): string {
+    const err = error as { message?: string; body?: unknown }
+    let parsed: { code?: string; message?: string } | null = null
+    try {
+      if (typeof err?.body === 'string' && err.body.trim().startsWith('{')) {
+        parsed = JSON.parse(err.body)
+      } else if (err?.body && typeof err.body === 'object') {
+        parsed = err.body as { code?: string; message?: string }
+      }
+    } catch {
+      parsed = null
+    }
+
+    const message = parsed?.message ?? err?.message ?? 'Import failed'
+    return parsed?.code ? `${message} (${parsed.code})` : message
+  }
+
+  /**
+   * @param destinationRootFolderId The root folder chosen for move/copy imports. The backend
+   * generates `<root>/<folder pattern>` from it. Sending the root path itself as a
+   * destination made the audiobook claim the whole root, and blocked the next import into
+   * the same root as an already-assigned destination. Ignored for in-place registration.
+   */
   async function importSelected(
-    rootFolderPath: string,
+    destinationRootFolderId: number | null,
   ): Promise<{ imported: number; errors: string[]; warnings: string[] }> {
     // Never import a row nobody confirmed: an unreviewed wrong match merges two books.
     const toImport = itemList.value.filter(
@@ -779,7 +806,11 @@ export const useLibraryImportStore = defineStore('libraryImport', () => {
           }
           const { audiobook } = await apiService.addToLibrary(metadata, {
             monitored: monitor.value != 'none',
-            destinationPath: action.value === 'none' ? item.folderPath : rootFolderPath,
+            ...(action.value === 'none'
+              ? { destinationPath: item.folderPath }
+              : destinationRootFolderId != null
+                ? { rootFolderId: destinationRootFolderId }
+                : {}),
             searchResult: sanitizedMatch,
           })
           audiobookId = audiobook.id
@@ -789,17 +820,10 @@ export const useLibraryImportStore = defineStore('libraryImport', () => {
           if (err?.status === 409 && err?.body) {
             const body = typeof err.body === 'string' ? JSON.parse(err.body) : err.body
             if (body?.audiobook?.id) {
+              // The existing audiobook is used as it is. Rewriting its BasePath here
+              // relabelled every registered file path without moving anything, leaving the
+              // library pointing at paths that do not exist.
               audiobookId = body.audiobook.id
-              // Mutation imports may compatibility-route an existing audiobook to the
-              // selected destination. In-place registration must never rewrite BasePath:
-              // the existing file has to belong to the audiobook's current managed folder.
-              if (action.value !== 'none' && rootFolderPath) {
-                try {
-                  await apiService.updateAudiobook(audiobookId, { basePath: rootFolderPath })
-                } catch {
-                  // Non-critical — import continues, file may go to OutputPath fallback
-                }
-              }
             } else {
               throw e
             }
@@ -821,9 +845,15 @@ export const useLibraryImportStore = defineStore('libraryImport', () => {
         const failedResult = importResult.results?.find((result) => !result.success)
         if (failedResult || importResult.importedCount !== item.sourceFiles.length) {
           const reason = failedResult?.error ?? failedResult?.skipReason
+          // The backend distinguishes its refusals by code. Surfacing it tells the user
+          // whether to fix the match, the destination, or nothing at all.
+          const code = failedResult?.warningCode
           throw new Error(
-            reason ??
-              `Only ${importResult.importedCount} of ${item.sourceFiles.length} file(s) were imported`,
+            reason
+              ? code
+                ? `${reason} (${code})`
+                : reason
+              : `Only ${importResult.importedCount} of ${item.sourceFiles.length} file(s) were imported`,
           )
         }
 
@@ -841,7 +871,7 @@ export const useLibraryImportStore = defineStore('libraryImport', () => {
         _persistMatches()
         imported++
       } catch (e) {
-        const msg = `${item.folderName}: ${(e as Error)?.message ?? 'Import failed'}`
+        const msg = `${item.folderName}: ${describeImportFailure(e)}`
         importErrors.value.push(msg)
         logger.debug('[libraryImport] Import error:', msg)
       }

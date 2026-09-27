@@ -182,9 +182,11 @@ const retryStrategies = LIBRARY_IMPORT_SEARCH_STRATEGIES
 const isImporting = ref(false)
 const importingCount = ref(0)
 
-const destinationPath = computed(() => {
-  if (store.action == 'none') return ''
-  return props.folders.find((f) => f.id === destinationFolderId.value)?.path ?? ''
+// The store asks the backend to generate `<root>/<folder pattern>` from this id. Sending the
+// root path itself as the destination made the audiobook claim the whole root folder.
+const destinationRootFolderId = computed(() => {
+  if (store.action == 'none') return null
+  return props.folders.find((f) => f.id === destinationFolderId.value)?.id ?? null
 })
 
 const destinationFolder = computed(() =>
@@ -227,7 +229,11 @@ async function handleImport() {
   isImporting.value = true
 
   try {
-    const { imported, errors, warnings = [] } = await store.importSelected(destinationPath.value)
+    const {
+      imported,
+      errors,
+      warnings = [],
+    } = await store.importSelected(destinationRootFolderId.value)
 
     if (imported > 0) {
       let msg = `${imported} book${imported !== 1 ? 's' : ''} imported`

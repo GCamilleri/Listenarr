@@ -28,6 +28,9 @@ namespace Listenarr.Api.Features.Library
         private readonly IAudiobookDestinationRewriteService _destinationRewriteService;
         private readonly IAudiobookOperationCoordinator _audiobookOperationCoordinator;
         private readonly IFileSystemSemanticsResolver _fileSystemSemanticsResolver;
+        private readonly IRootFolderService _rootFolderService;
+        private readonly IAudiobookFileRepository _audiobookFileRepository;
+        private readonly IFileSystem _fileSystem;
         private readonly ILogger<LibraryUpdateWorkflow> _logger;
 
         public LibraryUpdateWorkflow(
@@ -35,12 +38,18 @@ namespace Listenarr.Api.Features.Library
             IAudiobookDestinationRewriteService destinationRewriteService,
             IAudiobookOperationCoordinator audiobookOperationCoordinator,
             IFileSystemSemanticsResolver fileSystemSemanticsResolver,
+            IRootFolderService rootFolderService,
+            IAudiobookFileRepository audiobookFileRepository,
+            IFileSystem fileSystem,
             ILogger<LibraryUpdateWorkflow> logger)
         {
             _scopeFactory = scopeFactory;
             _destinationRewriteService = destinationRewriteService;
             _audiobookOperationCoordinator = audiobookOperationCoordinator ?? throw new ArgumentNullException(nameof(audiobookOperationCoordinator));
             _fileSystemSemanticsResolver = fileSystemSemanticsResolver ?? throw new ArgumentNullException(nameof(fileSystemSemanticsResolver));
+            _rootFolderService = rootFolderService ?? throw new ArgumentNullException(nameof(rootFolderService));
+            _audiobookFileRepository = audiobookFileRepository ?? throw new ArgumentNullException(nameof(audiobookFileRepository));
+            _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
             _logger = logger;
         }
 
@@ -76,6 +85,16 @@ namespace Listenarr.Api.Features.Library
                     _logger.LogWarning(
                         "Deprecated PUT /library/{AudiobookId} BasePath update received. Route destination changes through the move endpoint with moveFiles=false.",
                         id);
+
+                    var rebaseRejection = await ValidateBasePathRewriteAsync(
+                        id,
+                        request.BasePath,
+                        existingAudiobook.BasePath,
+                        cancellationToken);
+                    if (rebaseRejection != null)
+                    {
+                        return rebaseRejection;
+                    }
 
                     try
                     {

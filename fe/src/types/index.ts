@@ -1107,7 +1107,23 @@ export interface ManualImportRequest {
   action?: 'none' | 'move' | 'copy' | 'hardlink/copy'
   includeCompanionFiles?: boolean
   cleanupEmptySourceFolders?: boolean
+  /**
+   * Opt in to registering these files against an audiobook that already tracks files in a
+   * different folder. Off by default so a wrong match cannot merge two books into one.
+   */
+  allowMergeIntoExistingAudiobook?: boolean
   items?: ManualImportRequestItem[]
+}
+
+export interface AddToLibraryOptions {
+  monitored?: boolean
+  qualityProfileId?: number
+  autoSearch?: boolean
+  searchResult?: SearchResult
+  /** An exact folder for this one book. Never a root folder: use rootFolderId for that. */
+  destinationPath?: string
+  /** Put the book under this root folder using the configured folder naming pattern. */
+  rootFolderId?: number
 }
 
 export interface ManualImportResult {

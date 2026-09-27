@@ -117,9 +117,15 @@ describe('library import store', () => {
       ],
     })
 
-    const result = await store.importSelected('D:\\library')
+    const result = await store.importSelected(7)
 
     expect(addToLibrary).toHaveBeenCalledTimes(1)
+    const [, addOptions] = addToLibrary.mock.calls[0] as [
+      Record<string, unknown>,
+      Record<string, unknown>,
+    ]
+    expect(addOptions.rootFolderId).toBe(7)
+    expect(addOptions).not.toHaveProperty('destinationPath')
     expect(startManualImport).toHaveBeenCalledTimes(1)
     expect(startManualImport).toHaveBeenCalledWith({
       path: 'C:\\incoming',
@@ -177,7 +183,7 @@ describe('library import store', () => {
       ],
     })
 
-    const result = await store.importSelected('')
+    const result = await store.importSelected(null)
 
     expect(addToLibrary).toHaveBeenCalledWith(
       expect.any(Object),
@@ -241,7 +247,7 @@ describe('library import store', () => {
       ],
     })
 
-    const result = await store.importSelected('')
+    const result = await store.importSelected(null)
 
     expect(result.imported).toBe(0)
     expect(result.errors).toEqual([
@@ -290,7 +296,7 @@ describe('library import store', () => {
       ],
     })
 
-    const result = await store.importSelected('')
+    const result = await store.importSelected(null)
 
     expect(result.imported).toBe(0)
     expect(result.errors).toHaveLength(1)
@@ -335,7 +341,7 @@ describe('library import store', () => {
       results: [{ success: true }],
     })
 
-    const result = await store.importSelected('')
+    const result = await store.importSelected(null)
 
     expect(updateAudiobook).not.toHaveBeenCalled()
     expect(startManualImport).toHaveBeenCalledWith(
@@ -350,6 +356,94 @@ describe('library import store', () => {
       }),
     )
     expect(result.imported).toBe(1)
+  })
+
+  it('does not rebase an existing audiobook onto the root folder on a move import', async () => {
+    const { useLibraryImportStore } = await import('@/stores/libraryImport')
+    const store = useLibraryImportStore()
+
+    store.items = {
+      'C:\\incoming\\Book.m4b': {
+        id: 'C:\\incoming\\Book.m4b',
+        fullPath: 'C:\\incoming\\Book.m4b',
+        sourceFiles: ['C:\\incoming\\Book.m4b'],
+        folderPath: 'C:\\incoming',
+        relativePath: 'Book',
+        folderName: 'Book',
+        format: 'M4B',
+        fileCount: 1,
+        selectedMatch: { title: 'Book', authors: [] } as unknown as SearchResult,
+        matchState: 'matched',
+        matchIssue: 'none',
+        candidates: [],
+        hasSearched: true,
+        isSearching: false,
+        selected: true,
+      },
+    }
+    store.action = 'move'
+    addToLibrary.mockRejectedValueOnce({
+      status: 409,
+      body: { audiobook: { id: 88 } },
+    })
+    startManualImport.mockResolvedValueOnce({
+      importedCount: 1,
+      totalCount: 1,
+      results: [{ success: true }],
+    })
+
+    const result = await store.importSelected(7)
+
+    expect(updateAudiobook).not.toHaveBeenCalled()
+    expect(startManualImport).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'move',
+        items: [{ fullPath: 'C:\\incoming\\Book.m4b', matchedAudiobookId: 88 }],
+      }),
+    )
+    expect(result.imported).toBe(1)
+  })
+
+  it('surfaces the backend refusal code in the row error', async () => {
+    const { useLibraryImportStore } = await import('@/stores/libraryImport')
+    const store = useLibraryImportStore()
+
+    store.items = {
+      'C:\\incoming\\Book.m4b': {
+        id: 'C:\\incoming\\Book.m4b',
+        fullPath: 'C:\\incoming\\Book.m4b',
+        sourceFiles: ['C:\\incoming\\Book.m4b'],
+        folderPath: 'C:\\incoming',
+        relativePath: 'Book',
+        folderName: 'Book',
+        format: 'M4B',
+        fileCount: 1,
+        selectedMatch: { title: 'Book', authors: [] } as unknown as SearchResult,
+        matchState: 'matched',
+        matchIssue: 'none',
+        candidates: [],
+        hasSearched: true,
+        isSearching: false,
+        selected: true,
+      },
+    }
+    store.action = 'move'
+    startManualImport.mockResolvedValueOnce({
+      importedCount: 0,
+      totalCount: 1,
+      results: [
+        {
+          success: false,
+          error: 'The audiobook already has files in a different folder.',
+          warningCode: 'audiobook_already_has_files_elsewhere',
+        },
+      ],
+    })
+
+    const result = await store.importSelected(7)
+
+    expect(result.imported).toBe(0)
+    expect(result.errors[0]).toContain('audiobook_already_has_files_elsewhere')
   })
 
   it('ignores foreign scan completions until its own job id is assigned', async () => {
@@ -489,7 +583,12 @@ describe('library import store', () => {
 
     advancedSearch.mockResolvedValue([
       { asin: 'B004SOK2SE', title: 'Mistborn', matchScore: 0.96, lengthMinutes: 1499 },
-      { asin: 'B07F88TSBT', title: 'Mistborn: Secret History', matchScore: 0.46, lengthMinutes: 329 },
+      {
+        asin: 'B07F88TSBT',
+        title: 'Mistborn: Secret History',
+        matchScore: 0.46,
+        lengthMinutes: 329,
+      },
     ])
 
     store.items = {
@@ -559,10 +658,12 @@ describe('library import store', () => {
     const { useLibraryImportStore } = await import('@/stores/libraryImport')
     const store = useLibraryImportStore()
 
-    advancedSearch.mockRejectedValue(Object.assign(new Error('Rate limited'), {
-      status: 429,
-      retryAfter: 30,
-    }))
+    advancedSearch.mockRejectedValue(
+      Object.assign(new Error('Rate limited'), {
+        status: 429,
+        retryAfter: 30,
+      }),
+    )
 
     store.items = {
       'C:\\incoming\\Chapter 01.mp3': unsearchedRow() as never,
@@ -684,7 +785,7 @@ describe('library import store', () => {
       results: [{ success: true }],
     })
 
-    await store.importSelected('')
+    await store.importSelected(null)
 
     const [metadata, options] = addToLibrary.mock.calls[0] as [
       Record<string, unknown>,
@@ -692,8 +793,20 @@ describe('library import store', () => {
     ]
     expect(metadata.runtime).toBe(600)
     expect(metadata.seriesMemberships).toEqual([
-      { seriesName: 'The Mistborn Saga', seriesNumber: '1', seriesAsin: 'B0S1', isPrimary: true, sortOrder: 0 },
-      { seriesName: 'The Cosmere', seriesNumber: '', seriesAsin: 'B0S2', isPrimary: false, sortOrder: 1 },
+      {
+        seriesName: 'The Mistborn Saga',
+        seriesNumber: '1',
+        seriesAsin: 'B0S1',
+        isPrimary: true,
+        sortOrder: 0,
+      },
+      {
+        seriesName: 'The Cosmere',
+        seriesNumber: '',
+        seriesAsin: 'B0S2',
+        isPrimary: false,
+        sortOrder: 1,
+      },
     ])
     expect(options.searchResult?.isbn).toEqual(['9780575089914'])
   })
@@ -712,7 +825,7 @@ describe('library import store', () => {
       }) as never,
     }
 
-    const result = await store.importSelected('')
+    const result = await store.importSelected(null)
 
     expect(result.imported).toBe(0)
     expect(addToLibrary).not.toHaveBeenCalled()

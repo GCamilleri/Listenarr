@@ -969,6 +969,135 @@ namespace Listenarr.Tests.Features.Api.Features.Library
         }
 
         [Fact]
+        public async Task AddToLibrary_WithDestinationEqualToConfiguredRoot_StoresPatternedFolder()
+        {
+            var controller = _provider.GetRequiredService<LibraryController>();
+
+            var result = await controller.AddToLibrary(new LibraryController.AddToLibraryRequest
+            {
+                Metadata = new AudibleBookMetadata
+                {
+                    Title = "Root Destination Book",
+                    Author = "Root Author",
+                    Asin = "ROOT-ASIN-1"
+                },
+                Monitored = true,
+                DestinationPath = tempRoot
+            });
+
+            Assert.IsType<OkObjectResult>(result);
+            var stored = Assert.Single(await _audiobookRepository.GetAllAsync());
+            Assert.Equal(Path.GetFullPath(Path.Join(tempRoot, "Root Author")), stored.BasePath);
+            Assert.NotEqual(Path.GetFullPath(tempRoot), stored.BasePath);
+        }
+
+        [Fact]
+        public async Task AddToLibrary_TwoBooksWithTheSameRootDestination_BothSucceed()
+        {
+            var controller = _provider.GetRequiredService<LibraryController>();
+
+            var first = await controller.AddToLibrary(new LibraryController.AddToLibraryRequest
+            {
+                Metadata = new AudibleBookMetadata
+                {
+                    Title = "First Root Book",
+                    Author = "First Author",
+                    Asin = "ROOT-ASIN-A"
+                },
+                Monitored = true,
+                DestinationPath = tempRoot
+            });
+            var second = await controller.AddToLibrary(new LibraryController.AddToLibraryRequest
+            {
+                Metadata = new AudibleBookMetadata
+                {
+                    Title = "Second Root Book",
+                    Author = "Second Author",
+                    Asin = "ROOT-ASIN-B"
+                },
+                Monitored = true,
+                DestinationPath = tempRoot
+            });
+
+            Assert.IsType<OkObjectResult>(first);
+            Assert.IsType<OkObjectResult>(second);
+            var stored = await _audiobookRepository.GetAllAsync();
+            Assert.Equal(2, stored.Count);
+            Assert.Equal(2, stored.Select(book => book.BasePath).Distinct().Count());
+        }
+
+        [Fact]
+        public async Task AddToLibrary_InPlaceAddIntoFolderHoldingLooseBooks_IsAllowed()
+        {
+            // A folder of loose .m4b files legitimately holds several books. FileAction.None
+            // registers by file, not by folder, so exclusive folder ownership is not required.
+            var sharedFolder = Path.Join(tempRoot, "Loose Author");
+            Directory.CreateDirectory(sharedFolder);
+            await File.WriteAllTextAsync(Path.Join(sharedFolder, "first.m4b"), "first");
+            await File.WriteAllTextAsync(Path.Join(sharedFolder, "second.m4b"), "second");
+            var existing = new AudiobookBuilder()
+                .WithTitle("First Loose Book")
+                .WithBasePath(sharedFolder)
+                .Build();
+            existing.Asin = "LOOSE-ASIN-A";
+            await _audiobookRepository.AddAsync(existing);
+
+            var result = await _provider.GetRequiredService<LibraryController>().AddToLibrary(
+                new LibraryController.AddToLibraryRequest
+                {
+                    Metadata = new AudibleBookMetadata
+                    {
+                        Title = "Second Loose Book",
+                        Author = "Loose Author",
+                        Asin = "LOOSE-ASIN-B"
+                    },
+                    Monitored = true,
+                    DestinationPath = sharedFolder
+                });
+
+            Assert.IsType<OkObjectResult>(result);
+            var stored = await _audiobookRepository.GetAllAsync();
+            Assert.Equal(2, stored.Count);
+            Assert.All(
+                stored,
+                book => Assert.Equal(
+                    Path.GetFullPath(sharedFolder),
+                    Path.GetFullPath(book.BasePath!)));
+        }
+
+        [Fact]
+        public async Task AddToLibrary_WithRootFolderId_StoresPatternedFolderUnderThatRoot()
+        {
+            var secondRoot = FileService.GetTempDirectory("listenarr-test-second-root");
+            await _rootFolderRepository.AddAsync(new RootFolderBuilder()
+                .WithName("Second Root")
+                .WithPath(secondRoot)
+                .Build());
+            var addedRoot = Assert.Single(
+                await _rootFolderRepository.GetAllAsync(),
+                root => root.Path == secondRoot);
+            var controller = _provider.GetRequiredService<LibraryController>();
+
+            var result = await controller.AddToLibrary(new LibraryController.AddToLibraryRequest
+            {
+                Metadata = new AudibleBookMetadata
+                {
+                    Title = "Root Id Book",
+                    Author = "Root Id Author",
+                    Asin = "ROOT-ASIN-ID"
+                },
+                Monitored = true,
+                RootFolderId = addedRoot.Id
+            });
+
+            Assert.IsType<OkObjectResult>(result);
+            var stored = Assert.Single(await _audiobookRepository.GetAllAsync());
+            Assert.Equal(
+                Path.GetFullPath(Path.Join(secondRoot, "Root Id Author")),
+                stored.BasePath);
+        }
+
+        [Fact]
         public async Task AddToLibrary_InvalidLegacyRootDoesNotBlockValidConfiguredDestination()
         {
             var invalidLegacyRoot = "invalid\0legacy-root";

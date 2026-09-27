@@ -119,20 +119,41 @@ internal sealed partial class AudiobookScanService
             return audiobook.BasePath;
         }
 
-        if (FileSystemPathIdentity.AreEquivalent(
+        if (await IsConfiguredRootBroaderThanAttributionAsync(
+                command,
                 planned,
-                command.ScanIdentity.BoundaryPath,
-                semantics)
-            && discovery.AttributedFiles.Any(path =>
-                !FileSystemPathIdentity.AreEquivalent(
-                    Path.GetDirectoryName(path) ?? path,
-                    planned,
-                    semantics)))
+                discovery,
+                semantics,
+                cancellationToken))
         {
             diagnostics.Add(new AudiobookScanDiagnostic(
                 "ConfiguredRootBasePathRejected",
                 planned,
                 "The configured library root is broader than the attributed audiobook files."));
+            return audiobook.BasePath;
+        }
+
+        var plannedIsIdentifierBoundary =
+            !string.IsNullOrWhiteSpace(discovery.SelectedStableIdentifierBoundary)
+            && FileSystemPathIdentity.AreEquivalent(
+                planned,
+                discovery.SelectedStableIdentifierBoundary,
+                semantics);
+        if (string.IsNullOrWhiteSpace(audiobook.BasePath)
+            && !plannedIsIdentifierBoundary
+            && !PlannedBaseHoldsAttributedFilesDirectly(
+                planned,
+                discovery.AttributedFiles,
+                semantics))
+        {
+            // An audiobook with no recorded folder has nothing to compare a planned base against, so
+            // the only acceptable bases are a folder carrying the audiobook's own identifier and the
+            // folder the attributed files actually live in (or whose disc subfolders they live in).
+            // Any other ancestor spans folders that belong to other books.
+            diagnostics.Add(new AudiobookScanDiagnostic(
+                "BasePathAncestorRejected",
+                planned,
+                "An audiobook with no recorded folder cannot adopt an ancestor of its attributed files."));
             return audiobook.BasePath;
         }
 
@@ -171,6 +192,91 @@ internal sealed partial class AudiobookScanService
             audiobook.Id,
             LogRedaction.SanitizeFilePath(selected));
         return selected;
+    }
+
+    /// <summary>
+    /// True when the planned base is a configured library root (the scan boundary or any other
+    /// configured root) that spans more than the attributed files' own folder.
+    /// </summary>
+    private async Task<bool> IsConfiguredRootBroaderThanAttributionAsync(
+        AudiobookScanCommand command,
+        string planned,
+        ScanDiscoveryResult discovery,
+        FileSystemPathSemantics semantics,
+        CancellationToken cancellationToken)
+    {
+        var spansMoreThanOneFolder = discovery.AttributedFiles.Any(path =>
+            !FileSystemPathIdentity.AreEquivalent(
+                Path.GetDirectoryName(path) ?? path,
+                planned,
+                semantics));
+        if (!spansMoreThanOneFolder)
+        {
+            return false;
+        }
+
+        if (FileSystemPathIdentity.AreEquivalent(
+                planned,
+                command.ScanIdentity.BoundaryPath,
+                semantics))
+        {
+            return true;
+        }
+
+        IReadOnlyList<RootFolder> configuredRoots;
+        try
+        {
+            configuredRoots = await rootFolderService.GetAllAsync();
+        }
+        catch (Exception exception) when (WorkerExceptionClassifier.IsNonFatal(exception))
+        {
+            logger.LogWarning(
+                exception,
+                "Unable to load configured root folders while planning a BasePath; treating the planned base as a configured root");
+            return true;
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+        return configuredRoots.Any(root =>
+            !string.IsNullOrWhiteSpace(root.Path)
+            && FileSystemPathIdentity.AreEquivalent(planned, root.Path, semantics));
+    }
+
+    /// <summary>
+    /// True when every attributed file sits directly in the planned base, or in a disc subfolder of
+    /// it. False as soon as one file sits deeper, which means the planned base is an ancestor
+    /// spanning folders that belong to other books.
+    /// </summary>
+    private static bool PlannedBaseHoldsAttributedFilesDirectly(
+        string planned,
+        IEnumerable<string> attributedFiles,
+        FileSystemPathSemantics semantics)
+    {
+        foreach (var file in attributedFiles)
+        {
+            var directory = Path.GetDirectoryName(file);
+            if (string.IsNullOrWhiteSpace(directory))
+            {
+                return false;
+            }
+
+            if (FileSystemPathIdentity.AreEquivalent(directory, planned, semantics))
+            {
+                continue;
+            }
+
+            var parent = Path.GetDirectoryName(directory);
+            if (!string.IsNullOrWhiteSpace(parent)
+                && FileSystemPathIdentity.AreEquivalent(parent, planned, semantics)
+                && IsDiscDirectory(Path.GetFileName(directory) ?? string.Empty))
+            {
+                continue;
+            }
+
+            return false;
+        }
+
+        return true;
     }
 
     private static string? SelectMonotonicBasePath(

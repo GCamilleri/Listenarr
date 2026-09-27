@@ -9,7 +9,8 @@ public enum ScanPathAuthorizationFailure
     ConfigurationUnavailable,
     NoConfiguredRoots,
     OutsideConfiguredRoots,
-    IdentityUnavailable
+    IdentityUnavailable,
+    NoAudiobookPath
 }
 
 public enum ScanPathPhysicalProofKind
@@ -92,7 +93,12 @@ public interface IScanPathAuthorizationService
         string path,
         CancellationToken cancellationToken = default);
 
-    Task<ScanPathAuthorizationResult> ResolveDefaultAsync(
-        string? preferredPath,
+    /// <summary>
+    /// Authorizes a scan that acts on behalf of a single audiobook, using that audiobook's stored
+    /// library folder. A blank folder is refused: there is no safe substitute, and falling back to a
+    /// configured root would let one audiobook claim every unowned file beneath it.
+    /// </summary>
+    Task<ScanPathAuthorizationResult> ResolveAudiobookScopedAsync(
+        string? audiobookBasePath,
         CancellationToken cancellationToken = default);
 }

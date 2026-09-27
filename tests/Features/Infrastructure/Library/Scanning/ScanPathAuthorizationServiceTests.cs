@@ -1,5 +1,5 @@
-using Listenarr.Tests.Common;
 using Microsoft.EntityFrameworkCore;
+using Listenarr.Tests.Common;
 
 namespace Listenarr.Tests.Features.Infrastructure.Library.Scanning;
 
@@ -311,8 +311,13 @@ public sealed class ScanPathAuthorizationServiceTests : BaseTests
             result.Path);
     }
 
+    // Rewritten from ResolveDefaultAsync_ConfiguredDefaultRootTakesPrecedenceOverLegacyOutputPath,
+    // which pinned the defect: an audiobook-scoped scan with no BasePath fell back to the configured
+    // default root (or the legacy output path), making a scan for one audiobook authoritative over
+    // the whole library. There is no safe substitute for a missing BasePath, so the fallback is gone
+    // and the refusal is what is pinned now.
     [Fact]
-    public async Task ResolveDefaultAsync_ConfiguredDefaultRootTakesPrecedenceOverLegacyOutputPath()
+    public async Task ResolveAudiobookScopedAsync_BlankBasePath_IsRefusedInsteadOfFallingBackToARoot()
     {
         var configuredRoot = FileService.GetTempDirectory(
             "scan-authorization-default-root");
@@ -321,8 +326,6 @@ public sealed class ScanPathAuthorizationServiceTests : BaseTests
         var root = await AddAuthorizedRootAsync(configuredRoot);
         root.IsDefault = true;
         var rootFolderService = new Mock<IRootFolderService>(MockBehavior.Strict);
-        rootFolderService.Setup(service => service.GetDefaultAsync())
-            .ReturnsAsync(root);
         rootFolderService.Setup(service => service.GetAllAsync())
             .ReturnsAsync([root]);
         var configurationService = new Mock<IConfigurationService>(MockBehavior.Strict);
@@ -338,16 +341,38 @@ public sealed class ScanPathAuthorizationServiceTests : BaseTests
             _provider.GetRequiredService<IDirectoryObjectIdentityResolver>(),
             new CapturingScanAuthorizationLogger());
 
-        var result = await service.ResolveDefaultAsync(preferredPath: null);
+        var result = await service.ResolveAudiobookScopedAsync(audiobookBasePath: null);
+
+        Assert.False(result.IsAuthorized);
+        Assert.Equal(ScanPathAuthorizationFailure.NoAudiobookPath, result.Failure);
+        Assert.Null(result.Path);
+    }
+
+    [Fact]
+    public async Task ResolveAudiobookScopedAsync_AudiobookBasePath_IsAuthorizedWithinItsRoot()
+    {
+        var configuredRoot = FileService.GetTempDirectory(
+            "scan-authorization-scoped-root");
+        var basePath = Path.Join(configuredRoot, "Book");
+        Directory.CreateDirectory(basePath);
+        var root = await AddAuthorizedRootAsync(configuredRoot);
+        var rootFolderService = new Mock<IRootFolderService>(MockBehavior.Strict);
+        rootFolderService.Setup(service => service.GetAllAsync())
+            .ReturnsAsync([root]);
+        var configurationService = new Mock<IConfigurationService>(MockBehavior.Strict);
+        configurationService.Setup(service => service.GetApplicationSettingsAsync())
+            .ReturnsAsync(new ApplicationSettings());
+        var service = new ScanPathAuthorizationService(
+            configurationService.Object,
+            rootFolderService.Object,
+            _provider.GetRequiredService<IFileSystemSemanticsResolver>(),
+            _provider.GetRequiredService<IDirectoryObjectIdentityResolver>(),
+            new CapturingScanAuthorizationLogger());
+
+        var result = await service.ResolveAudiobookScopedAsync(basePath);
 
         Assert.True(result.IsAuthorized, result.Error);
-        Assert.Equal(
-            FileUtils.NormalizeStoredPath(configuredRoot),
-            result.Path);
-        Assert.False(FileSystemPathIdentity.AreEquivalent(
-            result.Path!,
-            legacyOutputPath,
-            result.Identity!.Value.Semantics));
+        Assert.Equal(FileUtils.NormalizeStoredPath(basePath), result.Path);
     }
 
     [WindowsFact]

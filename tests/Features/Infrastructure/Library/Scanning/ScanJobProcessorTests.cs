@@ -527,7 +527,7 @@ namespace Listenarr.Tests.Features.Infrastructure.Library.Scanning
                     It.IsAny<CancellationToken>()))
                 .ReturnsAsync((History entry, CancellationToken _) => entry);
             var authorizationService = new Mock<IScanPathAuthorizationService>();
-            authorizationService.Setup(service => service.ResolveDefaultAsync(
+            authorizationService.Setup(service => service.ResolveAudiobookScopedAsync(
                     audiobook.BasePath,
                     It.IsAny<CancellationToken>()))
                 .ReturnsAsync(ScanPathAuthorizationResult.Rejected(
@@ -557,7 +557,7 @@ namespace Listenarr.Tests.Features.Infrastructure.Library.Scanning
 
             await processor.ProcessJobAsync(job, CancellationToken.None);
 
-            authorizationService.Verify(service => service.ResolveDefaultAsync(
+            authorizationService.Verify(service => service.ResolveAudiobookScopedAsync(
                 audiobook.BasePath,
                 It.IsAny<CancellationToken>()), Times.Once);
             var updated = GetRequiredJob(queue, job.Id);
@@ -604,7 +604,7 @@ namespace Listenarr.Tests.Features.Infrastructure.Library.Scanning
                 FileService.GetTempPath(),
                 basePath);
             var authorizationService = new Mock<IScanPathAuthorizationService>();
-            authorizationService.Setup(service => service.ResolveDefaultAsync(
+            authorizationService.Setup(service => service.ResolveAudiobookScopedAsync(
                     basePath,
                     It.IsAny<CancellationToken>()))
                 .ReturnsAsync(ScanPathAuthorizationResult.Authorized(
@@ -657,6 +657,34 @@ namespace Listenarr.Tests.Features.Infrastructure.Library.Scanning
         {
             Assert.True(queue.TryGetJob(jobId, out var job));
             return Assert.IsType<ScanJob>(job);
+        }
+
+        [Fact]
+        public async Task ProcessJobAsync_BlankBasePath_IsRefusedInsteadOfScanningTheDefaultRoot()
+        {
+            var libraryRoot = FileService.GetTempDirectory("scan-processor-blank-base");
+            var bookDirectory = Path.Join(libraryRoot, "Another Author", "Another Book");
+            Directory.CreateDirectory(bookDirectory);
+            _ = await FileService.GetFileAsync(bookDirectory, "01.m4b", "audio");
+            var settings = await _applicationSettingsRepository.GetAsync()
+                ?? await _applicationSettingsRepository.InitializeIfMissingAsync(
+                    new ApplicationSettingsBuilder().Build());
+            settings.OutputPath = libraryRoot;
+            await _applicationSettingsRepository.SaveAsync(settings);
+            var audiobook = await _audiobookRepository.AddAsync(new AudiobookBuilder()
+                .WithTitle("Another Book")
+                .Build());
+            Assert.True(string.IsNullOrWhiteSpace(audiobook.BasePath));
+            var (queue, job) = await CreateQueuedScanJobAsync(audiobook);
+
+            await _provider.GetRequiredService<IScanJobProcessor>()
+                .ProcessJobAsync(job, CancellationToken.None);
+
+            var updatedJob = GetRequiredJob(queue, job.Id);
+            Assert.Equal("Failed", updatedJob.Status);
+            Assert.Empty(await _audiobookFileRepository.GetByAudiobookIdAsync(audiobook.Id));
+            var stored = await _audiobookRepository.GetByIdAsync(audiobook.Id);
+            Assert.True(string.IsNullOrWhiteSpace(stored?.BasePath));
         }
 
         private async Task<(ScanQueueService Queue, ScanJob Job)> CreateQueuedScanJobAsync(

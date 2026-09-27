@@ -33,7 +33,7 @@ public sealed class LibraryScanPathResolver(
                 ? await authorizationService.AuthorizeAsync(
                     requestedPath!,
                     cancellationToken)
-                : await authorizationService.ResolveDefaultAsync(
+                : await authorizationService.ResolveAudiobookScopedAsync(
                     preferredPath,
                     cancellationToken);
         }
@@ -96,6 +96,8 @@ public sealed class LibraryScanPathResolver(
                 "Scan path identity could not be established safely",
             ScanPathAuthorizationFailure.InvalidPath =>
                 "Scan path is invalid",
+            ScanPathAuthorizationFailure.NoAudiobookPath =>
+                "This audiobook has no library folder; set one or import its files before scanning",
             ScanPathAuthorizationFailure.NoConfiguredRoots =>
                 "No configured scan path is available",
             _ => "Scan path authorization failed"

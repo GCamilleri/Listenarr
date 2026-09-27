@@ -107,79 +107,28 @@ internal sealed partial class ScanPathAuthorizationService(
             physicalCapture.Identity);
     }
 
-    public async Task<ScanPathAuthorizationResult> ResolveDefaultAsync(
-        string? preferredPath,
+    public async Task<ScanPathAuthorizationResult> ResolveAudiobookScopedAsync(
+        string? audiobookBasePath,
         CancellationToken cancellationToken = default)
     {
-        if (!string.IsNullOrWhiteSpace(preferredPath))
+        if (string.IsNullOrWhiteSpace(audiobookBasePath))
         {
-            if (!TryGetStoredFullPath(preferredPath, out var storedPreferredPath))
-            {
-                return ScanPathAuthorizationResult.Rejected(
-                    ScanPathAuthorizationFailure.InvalidPath,
-                    "The persisted scan path is unavailable on this host.");
-            }
-
-            return await AuthorizeAsync(storedPreferredPath, cancellationToken);
-        }
-
-        RootFolder? defaultRoot;
-        try
-        {
-            defaultRoot = await rootFolderService.GetDefaultAsync();
-        }
-        catch (Exception exception) when (WorkerExceptionClassifier.IsNonFatal(exception))
-        {
-            logger.LogWarning(
-                exception,
-                "Unable to load the configured default root for a default scan");
+            // The previous fallback here was the configured default root, which made a scan for one
+            // audiobook authoritative over the entire library and let the attribution sweep claim
+            // every unowned file under any folder whose name matched the title.
             return ScanPathAuthorizationResult.Rejected(
-                ScanPathAuthorizationFailure.ConfigurationUnavailable,
-                "The configured default scan root could not be loaded safely.");
+                ScanPathAuthorizationFailure.NoAudiobookPath,
+                "This audiobook has no library folder. Set its folder or import its files first; scanning without one would attribute unrelated files to it.");
         }
 
-        if (defaultRoot != null)
-        {
-            if (!TryGetStoredFullPath(defaultRoot.Path, out var storedDefaultRoot))
-            {
-                return ScanPathAuthorizationResult.Rejected(
-                    ScanPathAuthorizationFailure.InvalidPath,
-                    "The configured default root is unavailable on this host.");
-            }
-
-            return await AuthorizeAsync(storedDefaultRoot, cancellationToken);
-        }
-
-        ApplicationSettings? settings;
-        try
-        {
-            settings = await configurationService.GetApplicationSettingsAsync();
-        }
-        catch (Exception exception) when (WorkerExceptionClassifier.IsNonFatal(exception))
-        {
-            logger.LogWarning(
-                exception,
-                "Unable to load the legacy configured output path for a default scan");
-            return ScanPathAuthorizationResult.Rejected(
-                ScanPathAuthorizationFailure.ConfigurationUnavailable,
-                "The legacy configured output path could not be loaded safely.");
-        }
-
-        if (string.IsNullOrWhiteSpace(settings?.OutputPath))
-        {
-            return ScanPathAuthorizationResult.Rejected(
-                ScanPathAuthorizationFailure.NoConfiguredRoots,
-                "No default scan path is configured.");
-        }
-
-        if (!TryGetStoredFullPath(settings.OutputPath, out var storedOutputPath))
+        if (!TryGetStoredFullPath(audiobookBasePath, out var storedBasePath))
         {
             return ScanPathAuthorizationResult.Rejected(
                 ScanPathAuthorizationFailure.InvalidPath,
-                "The configured output path is unavailable on this host.");
+                "The persisted scan path is unavailable on this host.");
         }
 
-        return await AuthorizeAsync(storedOutputPath, cancellationToken);
+        return await AuthorizeAsync(storedBasePath, cancellationToken);
     }
 
     private async Task<PhysicalIdentityCapture> TryCapturePhysicalIdentityAsync(

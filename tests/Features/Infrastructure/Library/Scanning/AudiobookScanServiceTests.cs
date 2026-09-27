@@ -1417,6 +1417,105 @@ public sealed class AudiobookScanServiceTests : BaseTests
         authorization.VerifyAll();
     }
 
+    [Fact]
+    public async Task ScanAsync_SeriesTitledAudiobookWithoutBasePath_DoesNotClaimSiblingBookFolders()
+    {
+        var root = FileService.GetTempDirectory("scan-service-series-sweep");
+        var seriesDirectory = Path.Join(root, "Brandon Sanderson", "The Stormlight Archive");
+        var bookFiles = new List<string>();
+        foreach (var book in new[]
+        {
+            "Book 01 - The Way of Kings",
+            "Book 02 - Words of Radiance",
+            "Book 03 - Oathbringer",
+            "Book 04 - Rhythm of War",
+            "Book 05 - Wind and Truth"
+        })
+        {
+            var bookDirectory = Path.Join(seriesDirectory, book);
+            Directory.CreateDirectory(bookDirectory);
+            bookFiles.Add(await FileService.GetFileAsync(bookDirectory, "01.m4b", "audio"));
+        }
+
+        var audiobook = await _audiobookRepository.AddAsync(new AudiobookBuilder()
+            .WithTitle("The Stormlight Archive")
+            .WithAuthor("Brandon Sanderson")
+            .Build());
+        Assert.True(string.IsNullOrWhiteSpace(audiobook.BasePath));
+
+        var result = await ScanAsync(audiobook, root);
+
+        Assert.Empty(result.AttributedFiles);
+        Assert.True(string.IsNullOrWhiteSpace(result.BasePath));
+        Assert.Empty(await _audiobookFileRepository.GetByAudiobookIdAsync(audiobook.Id));
+        foreach (var file in bookFiles)
+        {
+            Assert.DoesNotContain(file, result.AttributedFiles);
+        }
+    }
+
+    [Fact]
+    public async Task ScanAsync_SeriesTitledAudiobookWithBasePath_ClaimsOnlyThatFolderAndItsDiscs()
+    {
+        var root = FileService.GetTempDirectory("scan-service-series-scoped");
+        var seriesDirectory = Path.Join(root, "Brandon Sanderson", "The Stormlight Archive");
+        var ownedDirectory = Path.Join(seriesDirectory, "Book 03 - Oathbringer");
+        var discDirectory = Path.Join(ownedDirectory, "Disc 1");
+        var siblingDirectory = Path.Join(seriesDirectory, "Book 04 - Rhythm of War");
+        Directory.CreateDirectory(discDirectory);
+        Directory.CreateDirectory(siblingDirectory);
+        var ownedFile = await FileService.GetFileAsync(ownedDirectory, "01.m4b", "audio");
+        var discFile = await FileService.GetFileAsync(discDirectory, "02.m4b", "audio");
+        var siblingFile = await FileService.GetFileAsync(siblingDirectory, "01.m4b", "audio");
+
+        var audiobook = await _audiobookRepository.AddAsync(new AudiobookBuilder()
+            .WithTitle("The Stormlight Archive")
+            .WithAuthor("Brandon Sanderson")
+            .WithBasePath(ownedDirectory)
+            .Build());
+
+        var result = await ScanAsync(audiobook, root);
+
+        Assert.Equal(2, result.AttributedFiles.Count);
+        Assert.Contains(ownedFile, result.AttributedFiles);
+        Assert.Contains(discFile, result.AttributedFiles);
+        Assert.DoesNotContain(siblingFile, result.AttributedFiles);
+        Assert.Equal(ownedDirectory, result.BasePath);
+    }
+
+    [Fact]
+    public async Task ScanAsync_BlankBasePathWithFilesInTwoFolders_DoesNotAdoptTheirCommonAncestor()
+    {
+        var root = FileService.GetTempDirectory("scan-service-ancestor-base");
+        var seriesDirectory = Path.Join(root, "Brandon Sanderson", "The Stormlight Archive");
+        var firstDirectory = Path.Join(seriesDirectory, "Book 03 - Oathbringer");
+        var secondDirectory = Path.Join(seriesDirectory, "Book 04 - Rhythm of War");
+        Directory.CreateDirectory(firstDirectory);
+        Directory.CreateDirectory(secondDirectory);
+        var firstFile = await FileService.GetFileAsync(firstDirectory, "01.m4b", "audio");
+        var secondFile = await FileService.GetFileAsync(secondDirectory, "01.m4b", "audio");
+
+        var audiobook = await _audiobookRepository.AddAsync(new AudiobookBuilder()
+            .WithTitle("The Stormlight Archive")
+            .WithAuthor("Brandon Sanderson")
+            .Build());
+        await _audiobookFileRepository.AddAsync(new AudiobookFileBuilder()
+            .WithAudiobook(audiobook)
+            .WithPath(firstFile)
+            .Build());
+        await _audiobookFileRepository.AddAsync(new AudiobookFileBuilder()
+            .WithAudiobook(audiobook)
+            .WithPath(secondFile)
+            .Build());
+
+        var result = await ScanAsync(audiobook, root);
+
+        Assert.True(string.IsNullOrWhiteSpace(result.BasePath));
+        Assert.Contains(result.Diagnostics, diagnostic =>
+            diagnostic.Code == "BasePathAncestorRejected"
+            && diagnostic.Path == seriesDirectory);
+    }
+
     private async Task<AudiobookScanResult> ScanAsync(
         Audiobook audiobook,
         string scanRoot,

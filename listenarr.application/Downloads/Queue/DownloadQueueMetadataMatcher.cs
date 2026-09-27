@@ -20,9 +20,23 @@ using Microsoft.Extensions.Logging;
 
 namespace Listenarr.Application.Downloads.Queue
 {
+    /// <summary>
+    /// Result of matching a client queue row to a tracked download. <see cref="Score"/> is the
+    /// <see cref="QueueItem.GetMatchScore(Download)"/> value that produced the match: 3 or 4 mean the
+    /// client identifiers already agree, 2 or lower mean the match rests on title similarity alone.
+    /// </summary>
+    internal readonly record struct DownloadQueueMatch(Download Download, int Score)
+    {
+        /// <summary>
+        /// True when the match came from an identifier the client and the record already share,
+        /// rather than from title similarity.
+        /// </summary>
+        public bool IsIdentityMatch => Score >= 3;
+    }
+
     internal static class DownloadQueueMetadataMatcher
     {
-        public static Download? FindBestMatchingDownload(
+        public static DownloadQueueMatch? FindBestMatchingDownload(
             QueueItem queueItem,
             DownloadClientConfiguration client,
             IEnumerable<Download> candidateDownloads,
@@ -51,7 +65,10 @@ namespace Listenarr.Application.Downloads.Queue
             }
 
             var bestMatch = matches[0];
-            if (bestMatch.Score == 1 && matches.Skip(1).Any(x => x.Score == bestMatch.Score))
+
+            // A tie on any title-derived score is not evidence for either candidate. Identifier
+            // matches (3 and 4) cannot tie meaningfully, so the guard is limited to title scores.
+            if (bestMatch.Score <= 2 && matches.Skip(1).Any(x => x.Score == bestMatch.Score))
             {
                 logger.LogDebug(
                     "Queue item {QueueId} '{QueueTitle}' had ambiguous title-only matches on client {ClientId}; leaving unmatched",
@@ -61,7 +78,7 @@ namespace Listenarr.Application.Downloads.Queue
                 return null;
             }
 
-            return bestMatch.Download;
+            return new DownloadQueueMatch(bestMatch.Download, bestMatch.Score);
         }
 
         public static IEnumerable<string> GetKnownClientItemIds(Dictionary<string, object>? metadata)

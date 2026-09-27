@@ -181,67 +181,47 @@ internal sealed partial class AudiobookScanService
         FileSystemPathSemantics semantics,
         ICollection<AudiobookScanDiagnostic> diagnostics)
     {
-        if (string.IsNullOrWhiteSpace(existingBasePath))
-        {
-            return plannedBasePath;
-        }
-
-        if (FileSystemPathIdentity.AreEquivalent(
-                existingBasePath,
-                plannedBasePath,
-                semantics))
-        {
-            return existingBasePath;
-        }
-
-        if (command.MoveOwned)
-        {
-            diagnostics.Add(new AudiobookScanDiagnostic(
-                "MoveOwnedBasePathPreserved",
-                existingBasePath,
-                "A move-owned scan cannot replace its durable move target."));
-            return existingBasePath;
-        }
-
-        if (!command.IsAuthoritativeScope)
-        {
-            diagnostics.Add(new AudiobookScanDiagnostic(
-                "FocusedScanBasePathPreserved",
-                existingBasePath,
-                "A focused scan cannot redefine the complete audiobook root."));
-            return existingBasePath;
-        }
-
-        if (FileSystemPathIdentity.IsSameOrInside(
-                plannedBasePath,
-                existingBasePath,
-                semantics))
-        {
-            return plannedBasePath;
-        }
-
-        if (FileSystemPathIdentity.IsSameOrInside(
-                existingBasePath,
-                plannedBasePath,
-                semantics))
-        {
-            diagnostics.Add(new AudiobookScanDiagnostic(
-                "BasePathWideningRejected",
-                plannedBasePath,
-                "An ordinary scan cannot widen an existing audiobook BasePath."));
-            return existingBasePath;
-        }
-
-        if (existingFileCount == 0)
-        {
-            return plannedBasePath;
-        }
-
-        diagnostics.Add(new AudiobookScanDiagnostic(
-            "BasePathConflict",
+        // The rule itself lives in the application layer so the manual import path can
+        // apply the same monotonicity guarantees. Only the diagnostics are scan-specific.
+        var selection = AudiobookBasePathSelector.Select(
+            existingBasePath,
             plannedBasePath,
-            "The discovered files are unrelated to the existing tracked audiobook root."));
-        return existingBasePath;
+            existingFileCount,
+            semantics,
+            command.MoveOwned,
+            command.IsAuthoritativeScope);
+        switch (selection.Outcome)
+        {
+            case AudiobookBasePathSelectionOutcome.MoveOwnedPreserved:
+                diagnostics.Add(new AudiobookScanDiagnostic(
+                    "MoveOwnedBasePathPreserved",
+                    existingBasePath,
+                    "A move-owned scan cannot replace its durable move target."));
+                break;
+
+            case AudiobookBasePathSelectionOutcome.NonAuthoritativeScopePreserved:
+                diagnostics.Add(new AudiobookScanDiagnostic(
+                    "FocusedScanBasePathPreserved",
+                    existingBasePath,
+                    "A focused scan cannot redefine the complete audiobook root."));
+                break;
+
+            case AudiobookBasePathSelectionOutcome.WideningRejected:
+                diagnostics.Add(new AudiobookScanDiagnostic(
+                    "BasePathWideningRejected",
+                    plannedBasePath,
+                    "An ordinary scan cannot widen an existing audiobook BasePath."));
+                break;
+
+            case AudiobookBasePathSelectionOutcome.ConflictPreserved:
+                diagnostics.Add(new AudiobookScanDiagnostic(
+                    "BasePathConflict",
+                    plannedBasePath,
+                    "The discovered files are unrelated to the existing tracked audiobook root."));
+                break;
+        }
+
+        return selection.SelectedBasePath;
     }
 
     private static bool TryResolveStoredFilePath(

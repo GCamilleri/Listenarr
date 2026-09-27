@@ -29,6 +29,7 @@ public partial class ManualImportController : ControllerBase
 {
     private readonly ILogger<ManualImportController> _logger;
     private readonly IAudiobookRepository _audiobookRepository;
+    private readonly IAudiobookFileRepository _audiobookFileRepository;
     private readonly IMetadataService _metadataService;
     private readonly IFileNamingService _fileNamingService;
     private readonly IConfigurationService _configService;
@@ -75,6 +76,7 @@ public partial class ManualImportController : ControllerBase
         IMoveQueueService moveQueueService,
         ILibraryDirectoryOwnershipStore directoryOwnershipStore,
         ILibraryFilesystemMutationGate filesystemMutationGate,
+        IAudiobookFileRepository audiobookFileRepository,
         ManualImportPathPlanner? pathPlanner = null,
         ManualImportCompanionImporter? companionImporter = null,
         IFilePublicationCapabilityResolver? filePublicationCapabilityResolver = null,
@@ -107,6 +109,8 @@ public partial class ManualImportController : ControllerBase
         _directoryOwnershipStore = directoryOwnershipStore ?? throw new ArgumentNullException(nameof(directoryOwnershipStore));
         _filesystemMutationGate = filesystemMutationGate
             ?? throw new ArgumentNullException(nameof(filesystemMutationGate));
+        _audiobookFileRepository = audiobookFileRepository
+            ?? throw new ArgumentNullException(nameof(audiobookFileRepository));
         _pathPlanner = pathPlanner ?? new ManualImportPathPlanner(fileNamingService);
         _companionImporter = companionImporter ?? new ManualImportCompanionImporter(
             metadataService,
@@ -210,6 +214,7 @@ public partial class ManualImportController : ControllerBase
         var destinationTracker = new ManualImportDestinationTracker(
             _fileSystem,
             _filePublicationSourceCapability);
+        var guardContext = new ManualImportGuardContext();
 
         try
         {
@@ -295,6 +300,8 @@ public partial class ManualImportController : ControllerBase
                                 appSettings,
                                 fileCount > 1,
                                 compatibilityBatchId,
+                                guardContext,
+                                request.AllowMergeIntoExistingAudiobook,
                                 operationToken);
                             _logger.LogDebug(
                                 "Import result {Index}: Success={Success}, Destination={Destination}, Error={Error}",

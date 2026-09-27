@@ -36,6 +36,14 @@ namespace Listenarr.Api.Dtos.ManualImport
         [JsonPropertyName("cleanupEmptySourceFolders")]
         public bool CleanupEmptySourceFolders { get; set; }
 
+        /// <summary>
+        /// Allows registering these files against an audiobook that already tracks files in
+        /// a different folder. Off by default: an unintended merge folds two books into one
+        /// library entry and repoints the folder, which nothing later undoes.
+        /// </summary>
+        [JsonPropertyName("allowMergeIntoExistingAudiobook")]
+        public bool AllowMergeIntoExistingAudiobook { get; set; }
+
         [JsonPropertyName("items")]
         public List<ManualImportItemDto>? Items { get; set; }
     }

@@ -57,5 +57,21 @@ namespace Listenarr.Api.Dtos.ManualImport
                 SourcePath = sourcePath
             };
         }
+
+        public static ManualImportResultDto RefusalResult(
+            string warningCode,
+            string error,
+            string? sourcePath,
+            Audiobook? audiobook = null)
+        {
+            return new ManualImportResultDto
+            {
+                Success = false,
+                Error = error,
+                WarningCode = warningCode,
+                SourcePath = sourcePath,
+                Audiobook = audiobook
+            };
+        }
     }
 }

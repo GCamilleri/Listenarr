@@ -15,7 +15,15 @@ namespace Listenarr.Api.Features.Downloads;
 
 public sealed record ManualImportPathPlan(
     string DestinationPath,
-    string AudiobookBasePath);
+    string AudiobookBasePath,
+    string? RefusalCode = null,
+    string? RefusalMessage = null)
+{
+    public bool IsRefused => RefusalCode != null;
+
+    public static ManualImportPathPlan Refused(string code, string message) =>
+        new(string.Empty, string.Empty, code, message);
+}
 
 public sealed class ManualImportPathPlanner
 {
@@ -39,7 +47,8 @@ public sealed class ManualImportPathPlanner
         List<RootFolder> rootFolders,
         ApplicationSettings settings,
         FileSystemPathSemantics destinationSemantics,
-        bool isMultiFile = false)
+        bool isMultiFile = false,
+        Func<Task<IReadOnlyCollection<string?>>>? otherAudiobookManagedPathsProvider = null)
     {
         await Task.CompletedTask;
 
@@ -52,6 +61,24 @@ public sealed class ManualImportPathPlanner
             : FileUtils.NormalizeStoredPath(destinationBasePath);
         var configuredOutput = settings.OutputPath ?? string.Empty;
         var isCustomBasePath = IsCustomBasePath(basePath, configuredOutput, rootFolders, destinationSemantics);
+
+        // A custom base is committed verbatim as the audiobook folder, so it must not be a
+        // folder that already holds other books. Anything else there would be attributed to
+        // this one book by every later scan, move, rename and delete.
+        if (isCustomBasePath && otherAudiobookManagedPathsProvider != null)
+        {
+            var otherAudiobookManagedPaths = await otherAudiobookManagedPathsProvider();
+            if (otherAudiobookManagedPaths.Count > 0
+                && ManualImportSharedFolderGuard.ContainsOtherAudiobookPaths(
+                    basePath,
+                    otherAudiobookManagedPaths,
+                    destinationSemantics))
+            {
+                return ManualImportPathPlan.Refused(
+                    ManualImportSharedFolderGuard.RefusalWarningCode,
+                    ManualImportSharedFolderGuard.RefusalMessage);
+            }
+        }
 
         var extension = Path.GetExtension(sourceFilePath).ToLowerInvariant();
         if (string.IsNullOrEmpty(extension))
@@ -193,6 +220,10 @@ public sealed class ManualImportPathPlanner
         return ordered;
     }
 
+    // PLAN 04 LANDS HERE: the shared "is this path user-pinned" predicate replaces this
+    // method, and the rename planner's equivalent, with one implementation. Plan 03 only
+    // added the shared-parent refusal at the call site in GeneratePathAsync and did not
+    // change what "custom" means, so the two definitions still disagree until then.
     private static bool IsCustomBasePath(
         string basePath,
         string configuredOutput,

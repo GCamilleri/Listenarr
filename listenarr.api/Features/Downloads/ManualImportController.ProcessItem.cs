@@ -17,6 +17,8 @@ public partial class ManualImportController
         ApplicationSettings settings,
         bool hasMultipleFile,
         Guid compatibilityBatchId,
+        ManualImportGuardContext guardContext,
+        bool allowMergeIntoExistingAudiobook,
         CancellationToken cancellationToken)
     {
         try
@@ -80,6 +82,19 @@ public partial class ManualImportController
                     return ManualImportResultDto.FailureResult(
                         "The selected existing-file folder does not match the audiobook library folder.",
                         item.FullPath);
+                }
+
+                var inPlaceMergeRefusal = await EvaluateMergeGuardAsync(
+                    guardContext,
+                    audiobook,
+                    audiobook.BasePath,
+                    sourceSemantics,
+                    allowMergeIntoExistingAudiobook,
+                    item.FullPath,
+                    cancellationToken);
+                if (inPlaceMergeRefusal != null)
+                {
+                    return inPlaceMergeRefusal;
                 }
 
                 var registered = await _audiobookScanService.RegisterExistingFileAsync(
@@ -175,7 +190,30 @@ public partial class ManualImportController
                 rootFolders,
                 settings,
                 destinationSemantics,
-                hasMultipleFile);
+                hasMultipleFile,
+                () => guardContext.GetOtherAudiobookManagedPathsAsync(
+                    _audiobookRepository,
+                    _audiobookFileRepository,
+                    audiobook.Id,
+                    cancellationToken));
+            if (pathPlan.IsRefused)
+            {
+                return ToPlanRefusalResult(pathPlan, audiobook, item.FullPath);
+            }
+
+            var mergeRefusal = await EvaluateMergeGuardAsync(
+                guardContext,
+                audiobook,
+                pathPlan.AudiobookBasePath,
+                destinationSemantics,
+                allowMergeIntoExistingAudiobook,
+                item.FullPath,
+                cancellationToken);
+            if (mergeRefusal != null)
+            {
+                return mergeRefusal;
+            }
+
             var destinationPath = pathPlan.DestinationPath;
             if (!_fileSystem.TryValidateMutationTarget(
                     destinationPath,
@@ -229,6 +267,15 @@ public partial class ManualImportController
                     "The generated destination has no managed parent directory.",
                     item.FullPath);
             }
+
+            var monotonicBasePath = await ApplyBasePathMonotonicityAsync(
+                guardContext,
+                audiobook,
+                authoritativeBasePath,
+                destinationSemantics,
+                cancellationToken);
+            authoritativeBasePath = monotonicBasePath.BasePath;
+            var basePathWarningCode = monotonicBasePath.WarningCode;
 
             if (ownership.Outcome is not (
                     AudiobookFileOwnershipCheckOutcome.Available or
@@ -416,8 +463,11 @@ public partial class ManualImportController
                 RequestedAction = action.ToString(),
                 EffectiveAction = publicationPlan.EffectiveAction.ToString(),
                 SourceDisposition = publicationPlan.SourceDisposition.ToString(),
-                WarningCode = publicationPlan.ReasonCode,
+                WarningCode = publicationPlan.ReasonCode ?? basePathWarningCode,
                 Warning = publicationPlan.Message
+                    ?? (basePathWarningCode == null
+                        ? null
+                        : "The audiobook library folder was left as it was because the planned folder is unrelated to its existing files.")
             };
         }
         catch (Exception ex) when (ex is not OperationCanceledException

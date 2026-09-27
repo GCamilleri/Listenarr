@@ -2,7 +2,11 @@ name: Run Tests
 
 on:
   push:
-    branches: [ beta, main, canary, feature/* ]
+    # Every branch. The previous list covered beta, main, canary and feature/*,
+    # which missed the branch names CONTRIBUTING and CLAUDE.md actually tell
+    # people to use (123-audible-integration, bugfix/search-results,
+    # fix/..., integration/...), so push CI silently did not run on them.
+    branches: [ '**' ]
   pull_request:
     branches: [ beta, main, canary ]
     types: [ opened, synchronize, reopened ]
@@ -17,6 +21,13 @@ concurrency:
 jobs:
   unit-tests:
     runs-on: ubuntu-24.04
+    # The suite is known to deadlock on an unsupported filesystem. Without a
+    # timeout a hang burns the six-hour GitHub default.
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      # dorny/test-reporter publishes the .trx as a check run.
+      checks: write
     env:
       DOTNET_CLI_TELEMETRY_OPTOUT: "1"
       DOTNET_NOLOGO: "1"
@@ -30,6 +41,8 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
+          cache: true
+          cache-dependency-path: '**/packages.lock.json'
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -106,24 +119,52 @@ jobs:
       - name: Run native backend tests
         env:
           ASPNETCORE_ENVIRONMENT: Test
-          Playwright__Enabled: 'false'
-        run: pwsh -NoProfile -File scripts/run-native-backend-tests.ps1
+        shell: bash
+        run: scripts/run-native-backend-tests.sh --results-directory "${{ github.workspace }}/artifacts/test-results" --coverage
 
       - name: Run frontend tests
         working-directory: fe
-        run: |
-          if npm run test --silent --if-present; then
-            echo "Frontend tests ran successfully."
-          else
-            echo "Frontend tests failed." >&2
-            exit 1
-          fi
+        run: npm run test:unit
+
+      - name: Publish test results
+        # Runs even when the suite failed; that is the case where the report
+        # matters most.
+        if: ${{ !cancelled() }}
+        uses: dorny/test-reporter@v3
+        with:
+          name: Backend tests
+          path: artifacts/test-results/**/*.trx
+          reporter: dotnet-trx
+          fail-on-error: false
+
+      - name: Coverage summary
+        if: ${{ !cancelled() }}
+        uses: danielpalme/ReportGenerator-GitHub-Action@v5
+        with:
+          reports: artifacts/test-results/**/coverage.cobertura.xml
+          targetdir: artifacts/coverage-report
+          reporttypes: 'HtmlInline;Cobertura;MarkdownSummaryGithub'
+
+      - name: Append coverage to the job summary
+        if: ${{ !cancelled() }}
+        run: cat artifacts/coverage-report/SummaryGithub.md >> "$GITHUB_STEP_SUMMARY" || true
+
+      - name: Upload test and coverage artifacts
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-results
+          path: |
+            artifacts/test-results
+            artifacts/coverage-report
+          retention-days: 14
 
       - name: Publish API (linux-x64)
         run: dotnet publish ${{ env.API_PROJECT }} -c Release -r linux-x64 --no-restore --self-contained true /p:PublishSingleFile=true -o listenarr.api/publish/linux-x64
 
   backend-tests-windows:
     runs-on: windows-2025
+    timeout-minutes: 45
     env:
       DOTNET_CLI_TELEMETRY_OPTOUT: "1"
       DOTNET_NOLOGO: "1"
@@ -136,6 +177,8 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
+          cache: true
+          cache-dependency-path: '**/packages.lock.json'
 
       - name: Restore
         run: dotnet restore listenarr.slnx
@@ -146,5 +189,15 @@ jobs:
       - name: Run native backend tests
         env:
           ASPNETCORE_ENVIRONMENT: Test
-          Playwright__Enabled: 'false'
-        run: pwsh -NoProfile -File scripts/run-native-backend-tests.ps1
+        # Git Bash on the Windows runner. The read-only bind-mount block is
+        # Linux-only and skipped here, same as the PowerShell version was.
+        shell: bash
+        run: scripts/run-native-backend-tests.sh --results-directory "${{ github.workspace }}/artifacts/test-results"
+
+      - name: Upload Windows test results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-results-windows
+          path: artifacts/test-results
+          retention-days: 14

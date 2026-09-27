@@ -6,8 +6,36 @@
 version: 2
 updates:
   - package-ecosystem: "npm"
-    directories: 
-    - "/"
-    - "/fe"
+    directories:
+      - "/"
+      - "/fe"
+      - "/tools/discord-bot"
     schedule:
       interval: "daily"
+    groups:
+      # One PR per week for the routine churn, so the queue stays reviewable.
+      # Majors still arrive as their own PR.
+      frontend-minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
+  # The four backend projects use central package management with lock files.
+  # A bump here needs packages.lock.json regenerated, which the PR will show.
+  - package-ecosystem: "nuget"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      backend-minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Every workflow pins floating major tags (@v4, @v5). Without this, a pinned
+  # action never moves and security fixes to the action itself are never picked
+  # up.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"

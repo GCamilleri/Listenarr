@@ -32,7 +32,7 @@
     "format:frontend:check": "cd fe && npm run format:check",
     "format:check": "npm run format:backend:check && npm run format:frontend:check",
     "test": "npm run test:backend && npm run test:frontend",
-    "test:backend": "dotnet test",
+    "test:backend": "bash scripts/test-backend-docker.sh",
     "test:frontend": "cd fe && npm run test:unit",
     "prepare": "husky"
   },

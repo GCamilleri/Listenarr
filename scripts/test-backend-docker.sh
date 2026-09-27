@@ -23,7 +23,13 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 IMAGE="mcr.microsoft.com/dotnet/sdk:10.0"
-SRC_VOLUME="listenarr-src"
+
+# The source volume is namespaced by checkout path. Git worktrees each get their
+# own, so two of them can run the suite concurrently without overwriting each
+# other's synced tree. The NuGet cache is content-addressed, so it stays shared.
+CHECKOUT_ID="$(printf '%s' "$REPO_ROOT" | shasum -a 256 2>/dev/null || printf '%s' "$REPO_ROOT" | sha256sum)"
+CHECKOUT_ID="${CHECKOUT_ID%% *}"
+SRC_VOLUME="listenarr-src-${CHECKOUT_ID:0:12}"
 NUGET_VOLUME="listenarr-nuget"
 
 if ! docker info >/dev/null 2>&1; then
@@ -51,7 +57,7 @@ exec docker run --rm -i \
     # Sync every run so local edits are what actually gets tested. bin/obj stay
     # in the volume between runs so the build is incremental.
     tar -C /mnt \
-      --exclude=node_modules --exclude=.git --exclude=bin \
+      --exclude=node_modules --exclude=.git --exclude=.claude --exclude=bin \
       --exclude=obj --exclude=dist \
       -cf - . | tar -C /src -xf -
     cd /src

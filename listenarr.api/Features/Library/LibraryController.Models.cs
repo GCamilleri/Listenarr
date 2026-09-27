@@ -56,6 +56,13 @@ public partial class LibraryController
         public int? QualityProfileId { get; set; }
         public bool AutoSearch { get; set; }
         public string? DestinationPath { get; set; }
+
+        /// <summary>
+        /// Place the book under this root folder using the configured folder naming pattern.
+        /// Prefer this over sending the root folder itself as <see cref="DestinationPath"/>,
+        /// which would make the audiobook claim the whole root.
+        /// </summary>
+        public int? RootFolderId { get; set; }
         public SearchResult? SearchResult { get; set; }
     }
 

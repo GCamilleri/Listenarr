@@ -46,11 +46,12 @@ exec docker run --rm -i \
   --tmpfs /tmp:exec,mode=1777,size=4g \
   -v "$REPO_ROOT":/mnt:ro \
   -v "$SRC_VOLUME":/src \
-  -v "$NUGET_VOLUME":/root/.nuget/packages \
+  -v "$NUGET_VOLUME":/nuget \
   -e DOTNET_CLI_TELEMETRY_OPTOUT=1 \
   -e DOTNET_NOLOGO=1 \
   -e ASPNETCORE_ENVIRONMENT=Test \
   -e Playwright__Enabled=false \
+  -e NUGET_PACKAGES=/nuget \
   -e LISTENARR_REQUIRED_NATIVE_TEST_CAPABILITIES=DirectorySymbolicLinks,FileSymbolicLinks \
   "$IMAGE" \
   sh -euc '
@@ -61,5 +62,15 @@ exec docker run --rm -i \
       --exclude=obj --exclude=dist \
       -cf - . | tar -C /src -xf -
     cd /src
-    exec dotnet test listenarr.slnx -c Release "$@"
+
+    # Restore and build as root, which owns the volumes.
+    dotnet build listenarr.slnx -c Release
+
+    # Then run the tests as an unprivileged user. Several tests assert on
+    # permission-denied behaviour and can only pass when the process is not
+    # root; running as root made them permanent, meaningless failures and made
+    # the local run diverge from CI, which runs unprivileged on ubuntu.
+    id -u tester >/dev/null 2>&1 || useradd -m tester
+    chown -R tester:tester /src /nuget
+    exec su tester -s /bin/sh -c "cd /src && exec dotnet test listenarr.slnx -c Release --no-build \"\$@\"" -- sh "$@"
   ' -- "$@"

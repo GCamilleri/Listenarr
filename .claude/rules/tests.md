@@ -29,6 +29,6 @@ HTTP-level fakes live in `tests/Mocks/Api/` and inherit `BaseApiMock`, exposing 
 
 Use `scripts/test-backend-docker.sh`, not `dotnet test`. The native macOS run cannot work: the filesystem layer refuses non-x64 macOS, and the suite deadlocks partway through. The script takes the same arguments, so `scripts/test-backend-docker.sh --filter FullyQualifiedName~YourTestClass` works for a tight loop.
 
-Baseline is 3116 passed, 2 failed, 130 skipped. The two failures are container-as-root artifacts, listed in the root `CLAUDE.md`. Treat anything else as yours.
+Baseline is 3186 passed, 0 failed, 130 skipped. Treat any failure as yours.
 
 Passing tests are evidence, not proof. When reviewing a change, look for the cases that were not written, tests that only restate the implementation, and platform tests that were skipped on the host rather than actually run.

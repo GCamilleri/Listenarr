@@ -41,9 +41,11 @@ scripts/test-backend-docker.sh --filter FullyQualifiedName~RootFolderRelocation
 REBUILD=1 scripts/test-backend-docker.sh    # discard cached build output
 ```
 
-Needs Docker running. First run takes a few minutes to restore and build; after that the suite is about 40 seconds.
+Needs Docker running. First run takes a few minutes to restore and build; after that the suite is about 50 seconds.
 
-Current baseline: 3116 passed, 2 failed, 130 skipped. The two failures are artifacts of the container running as root (`MoveSourceManifestServiceTests.BuildAsync_CompanionAuthorizationRootTemporarilyUnavailable_DoesNotSilentlyOmitCompanion` and `FileSystemSafetyDeletionTests.TryDeleteFile_InaccessibleParent_IsNotTreatedAsMissing`, both asserting on permission-denied paths that cannot occur as root). Anything beyond those two is yours.
+Current baseline: **3186 passed, 0 failed, 130 skipped**. Any failure is yours.
+
+The container builds as root but runs `dotnet test` as an unprivileged user, because several tests assert on permission-denied behaviour and root bypasses the mode bits. Running them as root used to produce two permanent failures that everyone had to remember to ignore. It also means the local run now matches CI, which is unprivileged on ubuntu. The source volume is namespaced by checkout path so worktrees can run the suite concurrently.
 
 Two reasons the native run fails, both worth knowing before you touch this code:
 

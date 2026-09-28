@@ -113,6 +113,7 @@ public static class InfrastructureStartupCompositionExtensions
         }
 
         services.AddHostedService<StartupDbNormalizer>();
+        services.AddHostedService<BasePathPinReconciliationReporter>();
         return services;
     }
 

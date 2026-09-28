@@ -202,6 +202,8 @@ namespace Listenarr.Api.Features.Library
                 }
 
                 audiobook.BasePath = normalizedDestinationPath;
+                // An explicitly supplied destination is the user's choice of folder.
+                audiobook.BasePathIsUserPinned = true;
                 _logger.LogInformation("Using requested destination path for audiobook '{Title}': {BasePath}",
                     audiobook.Title, audiobook.BasePath);
             }

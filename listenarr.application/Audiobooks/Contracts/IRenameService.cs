@@ -19,7 +19,15 @@ namespace Listenarr.Application.Audiobooks.Contracts
 {
     public interface IRenameService
     {
-        Task<List<RenamePreview>> PreviewRenameAsync(int[] audiobookIds, CancellationToken ct = default);
+        /// <summary>
+        /// Plans the organize result for each audiobook. Books whose BasePath the user
+        /// pinned keep their folder unless <paramref name="includePinned"/> asks for them
+        /// to be re-planned from the naming pattern.
+        /// </summary>
+        Task<List<RenamePreview>> PreviewRenameAsync(
+            int[] audiobookIds,
+            bool includePinned = false,
+            CancellationToken ct = default);
         Task<List<RenameResult>> ExecuteRenameAsync(List<RenameOperation> operations, CancellationToken ct = default);
     }
 }

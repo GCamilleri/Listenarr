@@ -39,6 +39,7 @@ namespace Listenarr.Application.Audiobooks.Catalog
         public string? ImageUrl { get; set; }
         public bool Monitored { get; set; }
         public string? BasePath { get; set; }
+        public bool BasePathIsUserPinned { get; set; }
         public string? FilePath { get; set; }
         public long? FileSize { get; set; }
         public int FileCount { get; set; }

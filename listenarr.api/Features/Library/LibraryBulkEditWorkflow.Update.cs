@@ -75,7 +75,9 @@ namespace Listenarr.Api.Features.Library
                     id,
                     newBasePath,
                     audiobook.BasePath,
-                    cancellationToken);
+                    cancellationToken,
+                    // The naming pattern produced this path, so it stays pattern-managed.
+                    basePathIsUserPinned: false);
                 await TryAddBulkUpdateHistoryAsync(
                     audiobook,
                     $"Destination path rewritten to {newBasePath} via bulk update");

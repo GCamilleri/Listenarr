@@ -377,9 +377,9 @@ namespace Listenarr.Api.Features.Library
         }
 
         [HttpPost("{id}/rename/preview")]
-        public async Task<IActionResult> PreviewRenameSingle(int id, CancellationToken ct)
+        public async Task<IActionResult> PreviewRenameSingle(int id, CancellationToken ct, [FromQuery] bool includePinned = false)
         {
-            return await _renameWorkflow.PreviewSingleAsync(id, ct);
+            return await _renameWorkflow.PreviewSingleAsync(id, ct, includePinned);
         }
 
         [HttpPost("{id}/rename")]

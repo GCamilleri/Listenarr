@@ -17,9 +17,15 @@ public sealed record AudiobookDestinationRewriteResult(
 
 public interface IAudiobookDestinationRewriteService
 {
+    /// <summary>
+    /// Repoints an audiobook at a new base path without moving its files.
+    /// The trailing flag is true when the caller took the destination from the user,
+    /// false when the naming pattern produced it, and null to leave the flag alone.
+    /// </summary>
     Task<AudiobookDestinationRewriteResult> RewriteDestinationAsync(
         int audiobookId,
         string destinationPath,
         string? expectedSourcePath,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        bool? basePathIsUserPinned = null);
 }

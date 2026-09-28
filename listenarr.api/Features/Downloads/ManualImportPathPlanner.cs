@@ -9,6 +9,7 @@
  */
 
 using Listenarr.Api.Dtos.ManualImport;
+using Listenarr.Application.Common.Naming;
 using Listenarr.Domain.Common;
 
 namespace Listenarr.Api.Features.Downloads;
@@ -56,11 +57,23 @@ public sealed class ManualImportPathPlanner
         var folderPattern = settings.FolderNamingPattern;
         var filePattern = isMultiFile ? settings.MultiFileNamingPattern : settings.FileNamingPattern;
 
-        var basePath = string.IsNullOrWhiteSpace(destinationBasePath)
+        var requestedBasePath = string.IsNullOrWhiteSpace(destinationBasePath)
             ? string.Empty
             : FileUtils.NormalizeStoredPath(destinationBasePath);
-        var configuredOutput = settings.OutputPath ?? string.Empty;
-        var isCustomBasePath = IsCustomBasePath(basePath, configuredOutput, rootFolders, destinationSemantics);
+
+        // One predicate decides this for import and for organize alike. A pattern-managed
+        // destination is re-planned from the root that contains it, so both flows produce
+        // the same folder; a user-pinned one is committed verbatim.
+        var classification = LibraryBasePathPolicy.Classify(
+            requestedBasePath,
+            audiobook.BasePathIsUserPinned,
+            settings.OutputPath,
+            rootFolders,
+            destinationSemantics);
+        var isCustomBasePath = classification.IsUserPinned;
+        var basePath = string.IsNullOrWhiteSpace(classification.PatternRoot)
+            ? requestedBasePath
+            : classification.PatternRoot;
 
         // A custom base is committed verbatim as the audiobook folder, so it must not be a
         // folder that already holds other books. Anything else there would be attributed to
@@ -86,7 +99,7 @@ public sealed class ManualImportPathPlanner
             extension = ".m4b";
         }
 
-        var variables = BuildNamingVariables(audiobook, metadata, item, folderPattern, filePattern, isMultiFile, out var stableSuffixNumber);
+        var variables = BuildNamingVariables(audiobook, metadata, item, isMultiFile, out var stableSuffixNumber);
 
         string relativePath;
         string? plannedFolderRelative = null;
@@ -220,105 +233,13 @@ public sealed class ManualImportPathPlanner
         return ordered;
     }
 
-    // PLAN 04 LANDS HERE: the shared "is this path user-pinned" predicate replaces this
-    // method, and the rename planner's equivalent, with one implementation. Plan 03 only
-    // added the shared-parent refusal at the call site in GeneratePathAsync and did not
-    // change what "custom" means, so the two definitions still disagree until then.
-    private static bool IsCustomBasePath(
-        string basePath,
-        string configuredOutput,
-        List<RootFolder> rootFolders,
-        FileSystemPathSemantics destinationSemantics)
-    {
-        try
-        {
-            if (string.IsNullOrWhiteSpace(basePath))
-            {
-                return false;
-            }
-
-            if (!FileSystemPathIdentity.TryCanonicalizeUnambiguousStoredAbsolutePathForHost(
-                    basePath,
-                    out var baseFull,
-                    out _))
-            {
-                return true;
-            }
-
-            var configuredFull = string.Empty;
-            var hasConfiguredOutput = !string.IsNullOrWhiteSpace(configuredOutput)
-                && FileSystemPathIdentity.TryCanonicalizeUnambiguousStoredAbsolutePathForHost(
-                    configuredOutput,
-                    out configuredFull,
-                    out _);
-            var isCustomBasePath = !hasConfiguredOutput
-                || !FileSystemPathIdentity.AreEquivalent(
-                    baseFull,
-                    configuredFull,
-                    destinationSemantics);
-
-            if (isCustomBasePath)
-            {
-                var isRootFolder = rootFolders.Any(root =>
-                    FileSystemPathIdentity.TryCanonicalizeUnambiguousStoredAbsolutePathForHost(
-                        root.Path,
-                        out var rootPath,
-                        out _)
-                    && FileSystemPathIdentity.AreEquivalent(
-                        rootPath,
-                        baseFull,
-                        destinationSemantics));
-                if (isRootFolder) isCustomBasePath = false;
-            }
-
-            return isCustomBasePath;
-        }
-        catch (Exception caughtEx) when (caughtEx is not OperationCanceledException && caughtEx is not OutOfMemoryException && caughtEx is not StackOverflowException)
-        {
-            // When identity comparison cannot be completed, avoid falling back to host rules.
-            return !string.IsNullOrWhiteSpace(basePath);
-        }
-    }
-
     private static Dictionary<string, object> BuildNamingVariables(
         Audiobook audiobook,
         AudioMetadata metadata,
         ManualImportItemDto item,
-        string? folderPattern,
-        string? filePattern,
         bool isMultiFile,
         out int? stableSuffixNumber)
     {
-        var variables = new Dictionary<string, object>();
-
-        var author = audiobook.Authors?.FirstOrDefault();
-        if (!string.IsNullOrWhiteSpace(author)) variables["Author"] = author;
-
-        var narrator = audiobook.Narrators != null
-            ? string.Join(", ", audiobook.Narrators.Where(n => !string.IsNullOrWhiteSpace(n)))
-            : string.Empty;
-        if (!string.IsNullOrWhiteSpace(narrator)) variables["Narrator"] = narrator;
-
-        if (!string.IsNullOrWhiteSpace(audiobook.Publisher)) variables["Publisher"] = audiobook.Publisher;
-        if (!string.IsNullOrWhiteSpace(audiobook.Language)) variables["Language"] = audiobook.Language;
-        if (!string.IsNullOrWhiteSpace(audiobook.Asin)) variables["Asin"] = audiobook.Asin;
-        if (!string.IsNullOrWhiteSpace(audiobook.Subtitle)) variables["Subtitle"] = audiobook.Subtitle;
-        if (!string.IsNullOrWhiteSpace(audiobook.Edition)) variables["Edition"] = audiobook.Edition;
-
-        var usesSubtitleToken = (!string.IsNullOrWhiteSpace(folderPattern) && folderPattern.IndexOf("Subtitle", StringComparison.OrdinalIgnoreCase) >= 0)
-            || (!string.IsNullOrWhiteSpace(filePattern) && filePattern.IndexOf("Subtitle", StringComparison.OrdinalIgnoreCase) >= 0);
-
-        var titleFull = !usesSubtitleToken
-            && !string.IsNullOrWhiteSpace(audiobook.Subtitle)
-            && !string.IsNullOrWhiteSpace(audiobook.Title)
-            && !audiobook.Title.Contains(audiobook.Subtitle, StringComparison.OrdinalIgnoreCase)
-            ? $"{audiobook.Title}: {audiobook.Subtitle}"
-            : audiobook.Title;
-        variables["Title"] = !string.IsNullOrWhiteSpace(titleFull) ? titleFull : "Unknown Title";
-
-        if (!string.IsNullOrWhiteSpace(audiobook.Series)) variables["Series"] = audiobook.Series;
-        if (!string.IsNullOrWhiteSpace(audiobook.PublishYear)) variables["Year"] = audiobook.PublishYear;
-
         var effectiveDiskNumber = item.DiskNumberHint
             ?? (metadata.DiscNumber.HasValue && metadata.DiscNumber.Value > 0 ? metadata.DiscNumber.Value : null);
         var effectiveChapterNumber = item.ChapterNumberHint
@@ -330,11 +251,11 @@ public sealed class ManualImportPathPlanner
             effectiveChapterNumber ??= effectiveDiskNumber;
         }
 
-        if (effectiveDiskNumber.HasValue && effectiveDiskNumber.Value > 0) variables["DiskNumber"] = effectiveDiskNumber.Value;
-        if (effectiveChapterNumber.HasValue && effectiveChapterNumber.Value > 0) variables["ChapterNumber"] = effectiveChapterNumber.Value;
-
         stableSuffixNumber = effectiveChapterNumber ?? effectiveDiskNumber ?? item.SequenceNumberHint;
-        return variables;
+        return NamingVariableBuilder.FromAudiobook(
+            audiobook,
+            effectiveDiskNumber,
+            effectiveChapterNumber);
     }
 
     private static bool PatternAllowsSubfolders(string effectiveFilePattern)

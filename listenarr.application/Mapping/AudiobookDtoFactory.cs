@@ -74,6 +74,7 @@ namespace Listenarr.Application.Mapping
                 FilePath = audiobook.FilePath,
                 FileSize = audiobook.FileSize,
                 BasePath = audiobook.BasePath,
+                BasePathIsUserPinned = audiobook.BasePathIsUserPinned,
                 Files = files,
                 ImageUrl = audiobook.ImageUrl,
                 Quality = audiobook.Quality,

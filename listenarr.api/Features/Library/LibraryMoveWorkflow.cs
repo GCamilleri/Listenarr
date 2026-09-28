@@ -128,7 +128,9 @@ namespace Listenarr.Api.Features.Library
                         id,
                         request.DestinationPath,
                         request.SourcePath,
-                        cancellationToken);
+                        cancellationToken,
+                        // The user named this destination, so pin it against re-planning.
+                        basePathIsUserPinned: true);
                     return new OkObjectResult(new { message = "Destination updated" });
                 }
                 catch (ListenarrApplicationException ex)

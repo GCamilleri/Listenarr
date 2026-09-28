@@ -1,22 +1,59 @@
+using Listenarr.Application.Common.Naming;
+
 namespace Listenarr.Application.Downloads.Import;
 
 public partial class DownloadImportService
 {
-    private static AudioMetadata BuildNamingMetadata(
+    /// <summary>
+    /// The naming variables the download import plans one file with. It is the same
+    /// shared builder rename, manual import, library add and library preview use; this
+    /// dictionary used to be assembled inline at the call site with the default ordinal
+    /// comparer, so a lowercase <c>{author}</c> resolved to nothing and the file landed
+    /// flat in the root.
+    /// </summary>
+    internal static Dictionary<string, object> BuildDownloadNamingVariables(
+        AudioMetadata namingMetadata,
+        string fallbackTitle,
+        int? diskNumber,
+        int? chapterNumber)
+    {
+        if (string.IsNullOrWhiteSpace(namingMetadata.Title))
+        {
+            namingMetadata.Title = fallbackTitle;
+        }
+
+        namingMetadata.DiscNumber = diskNumber;
+        namingMetadata.TrackNumber = chapterNumber;
+        return NamingVariableBuilder.FromAudioMetadata(namingMetadata);
+    }
+
+    internal static AudioMetadata BuildNamingMetadata(
         Audiobook? audiobook,
         AudioMetadata? extractedMetadata,
         string fallbackTitle)
     {
         if (audiobook != null)
         {
-            var author = audiobook.Authors is { Count: > 0 }
-                ? string.Join(", ", audiobook.Authors)
-                : FirstNonEmpty(
-                    ChooseAuthorFromMetadata(extractedMetadata),
-                    "Unknown Author");
+            // Every other planner uses the first author for {Author}. Joining them here
+            // put a co-authored download in "Sanderson, Jordan/" and the next organize run
+            // moved it to "Sanderson/". The list travels alongside so {Authors} still works.
+            var namedAuthors = (audiobook.Authors ?? [])
+                .Where(candidate => !string.IsNullOrWhiteSpace(candidate))
+                .Select(candidate => candidate.Trim())
+                .ToList();
+            if (namedAuthors.Count == 0)
+            {
+                var fallbackAuthor = FirstNonEmpty(
+                    NamingVariableBuilder.ChooseAuthor(extractedMetadata),
+                    NamingVariableBuilder.UnknownAuthor);
+                namedAuthors.Add(fallbackAuthor);
+            }
+
+            var author = namedAuthors[0];
 
             return new AudioMetadata
             {
+                Authors = namedAuthors,
                 Title = FirstNonEmpty(
                     audiobook.Title,
                     extractedMetadata?.Title,
@@ -75,8 +112,8 @@ public partial class DownloadImportService
             if (string.IsNullOrWhiteSpace(extractedMetadata.Artist))
             {
                 extractedMetadata.Artist = FirstNonEmpty(
-                    ChooseAuthorFromMetadata(extractedMetadata),
-                    "Unknown Author");
+                    NamingVariableBuilder.ChooseAuthor(extractedMetadata),
+                    NamingVariableBuilder.UnknownAuthor);
             }
 
             if (string.IsNullOrWhiteSpace(extractedMetadata.AlbumArtist))
@@ -90,66 +127,9 @@ public partial class DownloadImportService
         return new AudioMetadata
         {
             Title = fallbackTitle,
-            Artist = "Unknown Author",
-            AlbumArtist = "Unknown Author"
+            Artist = NamingVariableBuilder.UnknownAuthor,
+            AlbumArtist = NamingVariableBuilder.UnknownAuthor
         };
-    }
-
-    private static string ChooseAuthorFromMetadata(AudioMetadata? metadata)
-    {
-        if (metadata == null)
-        {
-            return string.Empty;
-        }
-
-        var primary = NonNarratorAuthorCandidate(metadata.Artist, metadata.Narrator);
-        var alternate = NonNarratorAuthorCandidate(
-            metadata.AlbumArtist,
-            metadata.Narrator);
-
-        if (string.IsNullOrWhiteSpace(primary))
-        {
-            return alternate;
-        }
-
-        if (!string.IsNullOrWhiteSpace(metadata.Title)
-            && (primary.Contains(metadata.Title, StringComparison.OrdinalIgnoreCase)
-                || (!string.IsNullOrWhiteSpace(metadata.Series)
-                    && string.Equals(
-                        primary,
-                        metadata.Series,
-                        StringComparison.OrdinalIgnoreCase))
-                || string.Equals(
-                    primary,
-                    metadata.Title,
-                    StringComparison.OrdinalIgnoreCase)))
-        {
-            return string.IsNullOrWhiteSpace(alternate) ? primary : alternate;
-        }
-
-        return primary;
-    }
-
-    private static string NonNarratorAuthorCandidate(
-        string? candidate,
-        string? narrator)
-    {
-        if (string.IsNullOrWhiteSpace(candidate))
-        {
-            return string.Empty;
-        }
-
-        var trimmedCandidate = candidate.Trim();
-        if (!string.IsNullOrWhiteSpace(narrator)
-            && string.Equals(
-                trimmedCandidate,
-                narrator.Trim(),
-                StringComparison.OrdinalIgnoreCase))
-        {
-            return string.Empty;
-        }
-
-        return trimmedCandidate;
     }
 
     private static string FirstNonEmpty(params string?[] candidates) =>

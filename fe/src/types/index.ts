@@ -768,6 +768,8 @@ export interface Audiobook {
   fileSize?: number
   fileCount?: number
   basePath?: string
+  /** True when the user chose the folder, false when the naming pattern produced it. */
+  basePathIsUserPinned?: boolean
   files?: {
     id: number
     path?: string
@@ -821,6 +823,8 @@ export interface AudiobookUpdateRequest {
   filePath?: string
   fileSize?: number
   basePath?: string
+  /** True when the user chose the folder, false when the naming pattern produced it. */
+  basePathIsUserPinned?: boolean
   quality?: string
   qualityProfileId?: number
 }
@@ -1261,6 +1265,8 @@ export interface SavedUnmatchedResponse {
 
 export interface BulkRenameRequest {
   audiobookIds: number[]
+  /** Re-plan books whose BasePath the user pinned. Defaults to false server-side. */
+  includePinned?: boolean
 }
 
 export interface FileRenamePreview {

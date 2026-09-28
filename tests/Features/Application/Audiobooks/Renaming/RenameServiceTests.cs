@@ -225,6 +225,119 @@ namespace Listenarr.Tests.Features.Application.Audiobooks.Renaming
         }
 
         [Fact]
+        public async Task PreviewRename_UserPinnedBaseInsideARoot_IsNotRePlanned()
+        {
+            // Given a book the user placed at a folder of their own choosing, inside a
+            // configured root. Organize used to treat anything inside a root as
+            // pattern-managed and relocate it on the first run.
+            var (service, db, pinnedBase, _) = await BuildPinnedBookAsync(
+                audiobookId: 401,
+                basePathIsUserPinned: true);
+
+            // When the organize preview runs without asking for pinned books
+            var preview = Assert.Single(await service.PreviewRenameAsync([401]));
+
+            // Then the folder stays exactly where the user put it
+            Assert.False(preview.FolderChanged);
+            Assert.Equal(NormalizePath(pinnedBase), preview.NewFolderPath);
+            Assert.All(preview.FileRenames, file =>
+                Assert.StartsWith(
+                    NormalizePath(pinnedBase),
+                    file.NewPath!,
+                    StringComparison.OrdinalIgnoreCase));
+        }
+
+        [Fact]
+        public async Task PreviewRename_UserPinnedBaseInsideARoot_IsRePlannedWhenIncludePinnedIsSet()
+        {
+            // Given the same pinned book
+            var (service, db, _, managedRoot) = await BuildPinnedBookAsync(
+                audiobookId: 402,
+                basePathIsUserPinned: true);
+
+            // When the caller explicitly asks for pinned books to be re-planned
+            var preview = Assert.Single(await service.PreviewRenameAsync([402], includePinned: true));
+
+            // Then the pattern owns the folder again
+            Assert.True(preview.FolderChanged);
+            Assert.Equal(
+                NormalizePath(Path.Join(managedRoot, "Frank Herbert", "Dune")),
+                preview.NewFolderPath);
+        }
+
+        [Fact]
+        public async Task PreviewRename_UnpinnedBaseInsideARoot_IsStillRePlanned()
+        {
+            // Given the same folder, but produced by the naming pattern rather than chosen
+            var (service, db, _, managedRoot) = await BuildPinnedBookAsync(
+                audiobookId: 403,
+                basePathIsUserPinned: false);
+
+            // When the organize preview runs
+            var preview = Assert.Single(await service.PreviewRenameAsync([403]));
+
+            // Then organize re-plans it, which is the behaviour pinning exists to narrow
+            Assert.True(preview.FolderChanged);
+            Assert.Equal(
+                NormalizePath(Path.Join(managedRoot, "Frank Herbert", "Dune")),
+                preview.NewFolderPath);
+        }
+
+        private async Task<(RenameService Service, ListenArrDbContext Db, string PinnedBase, string ManagedRoot)>
+            BuildPinnedBookAsync(int audiobookId, bool basePathIsUserPinned)
+        {
+            var managedRoot = Path.Join(_tempRoot, $"pinned-root-{audiobookId}");
+            var pinnedBase = Path.Join(managedRoot, "Frank Herbert", "Dune 1 - Dune");
+            Directory.CreateDirectory(pinnedBase);
+            var rootFolders = new Mock<IRootFolderService>();
+            rootFolders.Setup(service => service.GetAllAsync())
+                .ReturnsAsync([
+                    new RootFolder
+                    {
+                        Id = 1,
+                        Name = "Managed Library",
+                        Path = managedRoot,
+                        IsDefault = true,
+                        CaseSensitivityMode = FileSystemCaseSensitivityMode.Auto,
+                        ResolvedCaseSensitivity =
+                            FileSystemPathSemantics.CurrentHostDefault.CaseSensitivity,
+                        PathIdentityState = PathIdentityState.Valid
+                    }
+                ]);
+            var settings = new ApplicationSettings
+            {
+                OutputPath = managedRoot,
+                FolderNamingPattern = "{Author}/{Title}",
+                FileNamingPattern = "{Title}"
+            };
+            var (service, db, _) = BuildService(
+                settings,
+                rootFolderServiceOverride: rootFolders.Object);
+            var filePath = Path.Join(pinnedBase, "Dune.m4b");
+            await File.WriteAllTextAsync(filePath, "dune");
+            db.Audiobooks.Add(new Audiobook
+            {
+                Id = audiobookId,
+                Title = "Dune",
+                Authors = ["Frank Herbert"],
+                BasePath = pinnedBase,
+                BasePathIsUserPinned = basePathIsUserPinned,
+                Files =
+                [
+                    new AudiobookFile
+                    {
+                        Id = audiobookId * 10,
+                        AudiobookId = audiobookId,
+                        Path = filePath,
+                        Format = "m4b"
+                    }
+                ]
+            });
+            await db.SaveChangesAsync();
+            return (service, db, pinnedBase, managedRoot);
+        }
+
+        [Fact]
         public async Task PreviewRename_ConfiguredRootsExist_StaleOutputPathDoesNotWidenCustomBase()
         {
             var managedRoot = Path.Join(_tempRoot, "managed-library");

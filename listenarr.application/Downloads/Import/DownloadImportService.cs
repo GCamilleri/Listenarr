@@ -302,23 +302,11 @@ namespace Listenarr.Application.Downloads.Import
                                 effectiveChapterNumber ??= effectiveDiskNumber;
                             }
 
-                            var variablesForFile = new Dictionary<string, object>
-                            {
-                                { "Author", namingMetadata.Artist ?? "Unknown Author" },
-                                { "Series", string.IsNullOrWhiteSpace(namingMetadata.Series) ? string.Empty : namingMetadata.Series },
-                                { "Title", namingMetadata.Title ?? Path.GetFileNameWithoutExtension(file) },
-                                { "Subtitle", string.IsNullOrWhiteSpace(namingMetadata.Subtitle) ? string.Empty : namingMetadata.Subtitle },
-                                { "Edition", string.IsNullOrWhiteSpace(namingMetadata.Edition) ? string.Empty : namingMetadata.Edition },
-                                { "Narrator", string.IsNullOrWhiteSpace(namingMetadata.Narrator) ? string.Empty : namingMetadata.Narrator },
-                                { "Publisher", string.IsNullOrWhiteSpace(namingMetadata.Publisher) ? string.Empty : namingMetadata.Publisher },
-                                { "Language", string.IsNullOrWhiteSpace(namingMetadata.Language) ? string.Empty : namingMetadata.Language },
-                                { "Asin", string.IsNullOrWhiteSpace(namingMetadata.Asin) ? string.Empty : namingMetadata.Asin },
-                                { "SeriesNumber", namingMetadata.SeriesPosition?.ToString() ?? effectiveChapterNumber?.ToString() ?? string.Empty },
-                                { "Year", namingMetadata.Year?.ToString() ?? string.Empty },
-                                { "Quality", (namingMetadata.BitRate.HasValue ? $"{namingMetadata.BitRate}kbps" : null) ?? namingMetadata.Format ?? string.Empty },
-                                { "DiskNumber", effectiveDiskNumber?.ToString() ?? string.Empty },
-                                { "ChapterNumber", effectiveChapterNumber?.ToString() ?? string.Empty }
-                            };
+                            var variablesForFile = BuildDownloadNamingVariables(
+                                namingMetadata,
+                                Path.GetFileNameWithoutExtension(file),
+                                effectiveDiskNumber,
+                                effectiveChapterNumber);
 
                             var folderRelative = fileNamingService.ApplyNamingPattern(folderPattern, variablesForFile, treatAsFilename: false);
                             if (string.IsNullOrEmpty(audiobook.BasePath) && !string.IsNullOrWhiteSpace(folderRelative))

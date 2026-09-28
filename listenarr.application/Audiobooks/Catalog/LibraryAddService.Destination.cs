@@ -84,6 +84,9 @@ public partial class LibraryAddService
             if (matchedRoot == null)
             {
                 audiobook.BasePath = normalizedRequestedBaseDirectory;
+                // The user named this folder. Record that, so organize does not re-plan it
+                // from the pattern the first time it runs.
+                audiobook.BasePathIsUserPinned = true;
             }
             else
             {
@@ -227,6 +230,8 @@ public partial class LibraryAddService
         }
 
         audiobook.BasePath = normalizedGeneratedBasePath;
+        // The pattern produced this folder, so the pattern keeps owning it.
+        audiobook.BasePathIsUserPinned = false;
         return null;
     }
 

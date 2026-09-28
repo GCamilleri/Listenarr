@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-using System.Text.RegularExpressions;
+using Listenarr.Application.Common.Naming;
 using Listenarr.Domain.Common;
 
 namespace Listenarr.Api.Features.Library
@@ -36,86 +36,32 @@ namespace Listenarr.Api.Features.Library
             return ResolvePathWithOptionalBase(rootPath, relative);
         }
 
+        /// <summary>
+        /// Applies the configured folder pattern exactly as the library add service does.
+        /// The private {Series} injection and the private sanitizer that used to live here
+        /// made this planner disagree with add and with organize for the same book, which
+        /// is what made each import plan one path and the next organize run plan another.
+        /// The pattern engine already strips an empty {Series} with its separators.
+        /// </summary>
         internal static string ComputeAudiobookRelativeDirectoryFromPattern(
             Audiobook audiobook,
             string fileNamingPattern,
             IFileNamingService fileNamingService)
         {
-            string directoryPattern;
-            if (!string.IsNullOrWhiteSpace(fileNamingPattern))
-            {
-                directoryPattern = fileNamingPattern;
-                directoryPattern = Regex.Replace(directoryPattern, @"\{DiskNumber[^}]*\}", "", RegexOptions.IgnoreCase);
-                directoryPattern = Regex.Replace(directoryPattern, @"\{ChapterNumber[^}]*\}", "", RegexOptions.IgnoreCase);
-                directoryPattern = CleanDirectoryPattern(directoryPattern);
+            var directoryPattern = string.IsNullOrWhiteSpace(fileNamingPattern)
+                ? DefaultDirectoryPattern
+                : fileNamingPattern;
 
-                if (string.IsNullOrWhiteSpace(directoryPattern) || !directoryPattern.Contains("/"))
-                {
-                    directoryPattern = "{Author}/{Title}";
-                }
-            }
-            else
-            {
-                directoryPattern = "{Author}/{Title}";
-            }
-
-            if (!string.IsNullOrWhiteSpace(audiobook.Series) && !directoryPattern.Contains("{Series}"))
-            {
-                if (directoryPattern.Contains("{Author}/{Title}"))
-                {
-                    directoryPattern = directoryPattern.Replace("{Author}/{Title}", "{Author}/{Series}/{Title}");
-                }
-                else if (directoryPattern.Contains("{Author}/"))
-                {
-                    directoryPattern = directoryPattern.Replace("{Author}/", "{Author}/{Series}/");
-                }
-            }
-
-            if (string.IsNullOrWhiteSpace(audiobook.Series))
-            {
-                directoryPattern = Regex.Replace(directoryPattern, @"\{Series[^}]*\}", string.Empty, RegexOptions.IgnoreCase);
-                directoryPattern = CleanDirectoryPattern(directoryPattern);
-            }
-
-            var variables = new Dictionary<string, object>
-            {
-                { "Author", SanitizeDirectoryName(audiobook.Authors?.FirstOrDefault() ?? "Unknown Author") },
-                { "Series", SanitizeDirectoryName(!string.IsNullOrWhiteSpace(audiobook.Series) ? audiobook.Series! : string.Empty) },
-                { "Title", SanitizeDirectoryName(audiobook.Title ?? "Unknown Title") },
-                { "Subtitle", SanitizeDirectoryName(audiobook.Subtitle ?? string.Empty) },
-                { "Edition", SanitizeDirectoryName(audiobook.Edition ?? string.Empty) },
-                { "Narrator", SanitizeDirectoryName((audiobook.Narrators != null && audiobook.Narrators.Any()) ? string.Join(", ", audiobook.Narrators.Where(n => !string.IsNullOrWhiteSpace(n))) : string.Empty) },
-                { "Publisher", SanitizeDirectoryName(audiobook.Publisher ?? string.Empty) },
-                { "Language", SanitizeDirectoryName(audiobook.Language ?? string.Empty) },
-                { "Asin", SanitizeDirectoryName(audiobook.Asin ?? string.Empty) },
-                { "SeriesNumber", audiobook.SeriesNumber ?? string.Empty },
-                { "Year", audiobook.PublishYear ?? string.Empty },
-                { "Quality", string.Empty },
-                { "DiskNumber", string.Empty },
-                { "ChapterNumber", string.Empty }
-            };
-
-            return fileNamingService.ApplyNamingPattern(directoryPattern, variables, false);
+            return fileNamingService.ApplyNamingPattern(
+                directoryPattern,
+                NamingVariableBuilder.FromAudiobook(audiobook),
+                false);
         }
 
-        internal static string SanitizeDirectoryName(string name)
-        {
-            var invalidChars = Path.GetInvalidFileNameChars();
-            foreach (var c in invalidChars)
-            {
-                name = name.Replace(c, '_');
-            }
-
-            name = name.Replace(":", "_").Replace("*", "_").Replace("?", "_").Replace("\"", "_").Replace("<", "_").Replace(">", "_").Replace("|", "_");
-            return name.Trim();
-        }
-
-        private static string CleanDirectoryPattern(string pattern)
-        {
-            pattern = Regex.Replace(pattern, @"[\\/]\s*[\\/]", "/");
-            pattern = Regex.Replace(pattern, @"^\s*[\\/]", "");
-            return Regex.Replace(pattern, @"[\\/]\s*$", "");
-        }
+        /// <summary>
+        /// Only reached when neither naming pattern is configured at all.
+        /// </summary>
+        private const string DefaultDirectoryPattern = "{Author}/{Series}/{Title}";
 
         private static string ResolvePathWithOptionalBase(string? basePath, string candidatePath)
         {

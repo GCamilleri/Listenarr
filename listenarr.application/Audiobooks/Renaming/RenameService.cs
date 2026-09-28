@@ -77,7 +77,10 @@ namespace Listenarr.Application.Audiobooks.Renaming
             _fileRenameCommitStore = fileRenameCommitStore ?? throw new ArgumentNullException(nameof(fileRenameCommitStore));
         }
 
-        public async Task<List<RenamePreview>> PreviewRenameAsync(int[] audiobookIds, CancellationToken ct = default)
+        public async Task<List<RenamePreview>> PreviewRenameAsync(
+            int[] audiobookIds,
+            bool includePinned = false,
+            CancellationToken ct = default)
         {
             if (audiobookIds == null || audiobookIds.Length == 0) return new();
             if (audiobookIds.Length > MaxAudiobookIds) throw new ArgumentException($"Cannot preview more than {MaxAudiobookIds} audiobooks at once.");
@@ -90,7 +93,7 @@ namespace Listenarr.Application.Audiobooks.Renaming
             var previews = new List<RenamePreview>();
             foreach (var audiobook in audiobooks)
             {
-                previews.Add(await BuildPreviewAsync(audiobook, settings, rootFolders, ct));
+                previews.Add(await BuildPreviewAsync(audiobook, settings, rootFolders, includePinned, ct));
             }
 
             return previews;
@@ -134,7 +137,7 @@ namespace Listenarr.Application.Audiobooks.Renaming
                 ct);
         }
 
-        private async Task<RenamePreview> BuildPreviewAsync(Audiobook audiobook, ApplicationSettings settings, List<RootFolder> rootFolders, CancellationToken ct)
+        private async Task<RenamePreview> BuildPreviewAsync(Audiobook audiobook, ApplicationSettings settings, List<RootFolder> rootFolders, bool includePinned, CancellationToken ct)
         {
             var currentPathSeed = ComputeCurrentBasePathSeed(audiobook);
             var pathResolution = await ResolveRenamePathResolutionAsync(
@@ -157,7 +160,13 @@ namespace Listenarr.Application.Audiobooks.Renaming
                 return preview;
             }
 
-            var namingBase = ResolveNamingBasePath(preview.CurrentFolderPath, settings, rootFolders, semantics);
+            var namingBase = ResolveNamingBasePath(
+                audiobook,
+                preview.CurrentFolderPath,
+                settings,
+                rootFolders,
+                semantics,
+                includePinned);
             var isMultiFile = files.Count > 1;
             var expectedPaths = new List<string>();
 

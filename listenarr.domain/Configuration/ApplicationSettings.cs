@@ -11,12 +11,14 @@ namespace Listenarr.Domain.Configuration
 
         // Folder naming pattern (base directory structure)
         // Available variables:
-        // {Author} - Audiobook author
+        // {Author} - First audiobook author
+        // {Authors} - All authors, comma separated
         // {Narrator} - Narrator name(s)
         // {Series} - Series name (if applicable)
         // {SeriesNumber} - Position in series (e.g., "1", "2")
         // {Title} - Book/audiobook title
         // {Subtitle} - Book subtitle
+        // {TitleWithSubtitle} - Title and subtitle joined as "Title: Subtitle"
         // {Edition} - User-defined edition label
         // {Publisher} - Publisher name
         // {Language} - Metadata language
@@ -26,12 +28,14 @@ namespace Listenarr.Domain.Configuration
 
         // File naming pattern for SINGLE-FILE imports (one audio file per audiobook)
         // Available variables:
-        // {Author} - Audiobook author
+        // {Author} - First audiobook author
+        // {Authors} - All authors, comma separated
         // {Narrator} - Narrator name(s)
         // {Series} - Series name (if applicable)
         // {SeriesNumber} - Position in series (e.g., "1", "2")
         // {Title} - Book/audiobook title
         // {Subtitle} - Book subtitle
+        // {TitleWithSubtitle} - Title and subtitle joined as "Title: Subtitle"
         // {Edition} - User-defined edition label
         // {Publisher} - Publisher name
         // {Language} - Metadata language
@@ -43,12 +47,14 @@ namespace Listenarr.Domain.Configuration
         // File naming pattern for MULTI-FILE imports (multiple audio files per audiobook)
         // Use {DiskNumber} or {DiskNumber:00}, {ChapterNumber} or {ChapterNumber:00} to differentiate files
         // Available variables:
-        // {Author} - Audiobook author
+        // {Author} - First audiobook author
+        // {Authors} - All authors, comma separated
         // {Narrator} - Narrator name(s)
         // {Series} - Series name (if applicable)
         // {SeriesNumber} - Position in series (e.g., "1", "2")
         // {Title} - Book/audiobook title
         // {Subtitle} - Book subtitle
+        // {TitleWithSubtitle} - Title and subtitle joined as "Title: Subtitle"
         // {Edition} - User-defined edition label
         // {Publisher} - Publisher name
         // {Language} - Metadata language

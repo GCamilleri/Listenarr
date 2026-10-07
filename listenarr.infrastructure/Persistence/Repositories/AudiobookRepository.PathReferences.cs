@@ -22,7 +22,8 @@ public partial class AudiobookRepository
         FileSystemPathSemantics sourceSemantics,
         FileSystemPathSemantics targetSemantics,
         CancellationToken ct = default,
-        FileSystemCaseSensitivityMode targetCaseSensitivityMode = FileSystemCaseSensitivityMode.Auto) =>
+        FileSystemCaseSensitivityMode targetCaseSensitivityMode = FileSystemCaseSensitivityMode.Auto,
+        bool? basePathIsUserPinned = null) =>
         RewritePathReferencesCoreAsync(
             audiobookId,
             sourceBasePath,
@@ -32,6 +33,7 @@ public partial class AudiobookRepository
             targetCaseSensitivityMode,
             targetPhysicalObjectIdentities: null,
             targetPhysicalIdentityObservedAtUtc: null,
+            basePathIsUserPinned,
             ct);
 
     public Task<bool> RewriteMovedPathReferencesAsync(
@@ -55,6 +57,7 @@ public partial class AudiobookRepository
             targetCaseSensitivityMode,
             targetPhysicalObjectIdentities,
             targetPhysicalIdentityObservedAtUtc,
+            basePathIsUserPinned: null,
             ct);
     }
 
@@ -67,6 +70,7 @@ public partial class AudiobookRepository
         FileSystemCaseSensitivityMode targetCaseSensitivityMode,
         IReadOnlyDictionary<string, string>? targetPhysicalObjectIdentities,
         DateTime? targetPhysicalIdentityObservedAtUtc,
+        bool? basePathIsUserPinned,
         CancellationToken ct)
     {
         try
@@ -88,6 +92,10 @@ public partial class AudiobookRepository
                 targetCaseSensitivityMode,
                 targetPhysicalObjectIdentities,
                 targetPhysicalIdentityObservedAtUtc);
+            if (basePathIsUserPinned.HasValue)
+            {
+                audiobook.BasePathIsUserPinned = basePathIsUserPinned.Value;
+            }
             await _db.SaveChangesAsync(ct);
             return true;
         }

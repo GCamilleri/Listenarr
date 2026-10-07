@@ -2,6 +2,7 @@
  * Listenarr - Audiobook Management System
  * Copyright (C) 2024-2026 Listenarr Contributors
  */
+using Listenarr.Application.Common.Naming;
 using Listenarr.Domain.Common;
 using Microsoft.Extensions.Logging;
 namespace Listenarr.Application.Audiobooks.Renaming
@@ -147,7 +148,7 @@ namespace Listenarr.Application.Audiobooks.Renaming
         {
             var folderPattern = settings.FolderNamingPattern;
             var filePattern = isMultiFile ? settings.MultiFileNamingPattern : settings.FileNamingPattern;
-            var variables = BuildNamingVariables(audiobook, folderPattern, filePattern, file.SequenceNumber, isMultiFile);
+            var variables = BuildNamingVariables(audiobook, file.SequenceNumber, isMultiFile);
             var patternHasNumberTokens = !string.IsNullOrWhiteSpace(filePattern)
                 && (filePattern.IndexOf("DiskNumber", StringComparison.OrdinalIgnoreCase) >= 0 || filePattern.IndexOf("ChapterNumber", StringComparison.OrdinalIgnoreCase) >= 0);
 
@@ -178,36 +179,11 @@ namespace Listenarr.Application.Audiobooks.Renaming
             return string.IsNullOrWhiteSpace(basePath) ? NormalizePath(relativePath) : NormalizePath(CombineWithOptionalBase(basePath, relativePath));
         }
 
-        private static Dictionary<string, object> BuildNamingVariables(Audiobook audiobook, string? folderPattern, string? filePattern, int sequenceNumber, bool isMultiFile)
-        {
-            var usesSubtitleToken = (!string.IsNullOrWhiteSpace(folderPattern) && folderPattern.IndexOf("Subtitle", StringComparison.OrdinalIgnoreCase) >= 0)
-                || (!string.IsNullOrWhiteSpace(filePattern) && filePattern.IndexOf("Subtitle", StringComparison.OrdinalIgnoreCase) >= 0);
-            var combinedTitle = !usesSubtitleToken
-                && !string.IsNullOrWhiteSpace(audiobook.Subtitle)
-                && !string.IsNullOrWhiteSpace(audiobook.Title)
-                && !audiobook.Title.Contains(audiobook.Subtitle, StringComparison.OrdinalIgnoreCase)
-                ? $"{audiobook.Title}: {audiobook.Subtitle}"
-                : audiobook.Title;
-            var narrator = audiobook.Narrators != null ? string.Join(", ", audiobook.Narrators.Where(n => !string.IsNullOrWhiteSpace(n))) : string.Empty;
-
-            return new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
-            {
-                { "Author", audiobook.Authors?.FirstOrDefault(n => !string.IsNullOrWhiteSpace(n)) ?? "Unknown Author" },
-                { "Series", audiobook.Series ?? string.Empty },
-                { "Title", string.IsNullOrWhiteSpace(combinedTitle) ? "Unknown Title" : combinedTitle },
-                { "Subtitle", audiobook.Subtitle ?? string.Empty },
-                { "Edition", audiobook.Edition ?? string.Empty },
-                { "Narrator", narrator },
-                { "Publisher", audiobook.Publisher ?? string.Empty },
-                { "Language", audiobook.Language ?? string.Empty },
-                { "Asin", audiobook.Asin ?? string.Empty },
-                { "SeriesNumber", audiobook.SeriesNumber ?? string.Empty },
-                { "Year", audiobook.PublishYear ?? string.Empty },
-                { "Quality", audiobook.Quality ?? string.Empty },
-                { "DiskNumber", isMultiFile ? sequenceNumber : string.Empty },
-                { "ChapterNumber", isMultiFile ? sequenceNumber : string.Empty }
-            };
-        }
+        private static Dictionary<string, object> BuildNamingVariables(Audiobook audiobook, int sequenceNumber, bool isMultiFile)
+            => NamingVariableBuilder.FromAudiobook(
+                audiobook,
+                diskNumber: isMultiFile ? sequenceNumber : null,
+                chapterNumber: isMultiFile ? sequenceNumber : null);
 
         private async Task<List<RootFolder>> LoadRootFoldersAsync()
         {
@@ -229,53 +205,41 @@ namespace Listenarr.Application.Audiobooks.Renaming
             }
         }
 
+        /// <summary>
+        /// Organize plans from the shared policy rather than its own rule, so a folder the
+        /// user pinned is left alone here and by manual import alike. A pinned book is
+        /// re-planned only when the request explicitly asks for it.
+        /// </summary>
         private static (string BasePath, bool IsCustomBasePath) ResolveNamingBasePath(
+            Audiobook audiobook,
             string? currentBasePath,
             ApplicationSettings settings,
             List<RootFolder> rootFolders,
-            FileSystemPathSemantics semantics)
+            FileSystemPathSemantics semantics,
+            bool includePinned)
         {
-            if (string.IsNullOrWhiteSpace(currentBasePath))
+            if (!string.IsNullOrWhiteSpace(currentBasePath))
             {
-                var configuredRoot = rootFolders.FirstOrDefault(r => r.IsDefault)?.Path
-                    ?? rootFolders.FirstOrDefault()?.Path;
-                var configuredBase = rootFolders.Count > 0
-                    ? TryResolveStoredAbsolutePathForHost(configuredRoot)
-                    : TryResolveStoredAbsolutePathForHost(settings.OutputPath);
-                if (configuredBase == null)
-                {
-                    throw new InvalidOperationException(
-                        "No configured organize root is available on the current host.");
-                }
-
-                return (configuredBase, false);
+                // Preserve the existing hard failure for a base path this host cannot read.
+                currentBasePath = RequireStoredAbsolutePathForHost(
+                    currentBasePath,
+                    "The audiobook base path is unavailable on the current host.");
             }
 
-            var normalizedCurrent = RequireStoredAbsolutePathForHost(
+            var classification = LibraryBasePathPolicy.Classify(
                 currentBasePath,
-                "The audiobook base path is unavailable on the current host.");
-            var matchingRootPath = rootFolders
-                .Select(root => TryResolveStoredAbsolutePathForHost(root.Path))
-                .Where(path => path != null
-                    && IsSamePathOrWithin(normalizedCurrent, path, semantics))
-                .OrderByDescending(path => path!.Length)
-                .FirstOrDefault();
-            if (matchingRootPath != null)
+                audiobook.BasePathIsUserPinned,
+                settings.OutputPath,
+                rootFolders,
+                semantics,
+                includePinned);
+            if (string.IsNullOrWhiteSpace(classification.PatternRoot))
             {
-                return (matchingRootPath, false);
+                throw new InvalidOperationException(
+                    "No configured organize root is available on the current host.");
             }
 
-            if (rootFolders.Count == 0)
-            {
-                var outputPath = TryResolveStoredAbsolutePathForHost(settings.OutputPath);
-                if (outputPath != null
-                    && IsSamePathOrWithin(normalizedCurrent, outputPath, semantics))
-                {
-                    return (outputPath, false);
-                }
-            }
-
-            return (normalizedCurrent, true);
+            return (classification.PatternRoot, classification.IsUserPinned);
         }
 
         private static IReadOnlyCollection<string> BuildAllowedRoots(

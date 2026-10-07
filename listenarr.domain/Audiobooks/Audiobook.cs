@@ -64,6 +64,11 @@ namespace Listenarr.Domain.Audiobooks
         // using the authoritative path semantics for that root.
         public string? BasePath { get; set; }
 
+        // True when the user chose this folder, false when the naming pattern produced it.
+        // Nothing else can tell the two apart, and without the distinction organize keeps
+        // relocating folders the user deliberately picked. Existing rows default to false.
+        public bool BasePathIsUserPinned { get; set; }
+
         // Multi-file support: store zero or more file records for this audiobook
         public List<AudiobookFile>? Files { get; set; }
         public string? Quality { get; set; }
@@ -86,6 +91,10 @@ namespace Listenarr.Domain.Audiobooks
                 Title = Title ?? string.Empty,
                 Subtitle = Subtitle,
                 Edition = Edition,
+                // Carry the list, not just the joined string: the naming builder takes
+                // {Author} from the first author, and a joined Artist would otherwise make
+                // a co-authored book land in "Sanderson, Jordan/" on this path alone.
+                Authors = Authors,
                 Artist = (Authors != null && Authors.Any()) ? string.Join(", ", Authors) : string.Empty,
                 AlbumArtist = (Authors != null && Authors.Any()) ? string.Join(", ", Authors) : string.Empty,
                 Narrator = (Narrators != null && Narrators.Any())

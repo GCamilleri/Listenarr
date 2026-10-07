@@ -22,6 +22,14 @@ namespace Listenarr.Domain.Audiobooks
     {
         public string Title { get; set; } = string.Empty;
         public string Artist { get; set; } = string.Empty;
+
+        /// <summary>
+        /// The resolved author list when one is known. File tags carry a single artist
+        /// string, so this stays null for tag-only metadata and the naming builder falls
+        /// back to the artist heuristic. Import flows that already hold a matched
+        /// audiobook set it so {Author} is the first author rather than a joined string.
+        /// </summary>
+        public List<string>? Authors { get; set; }
         public string Album { get; set; } = string.Empty;
         public string AlbumArtist { get; set; } = string.Empty;
         public string Genre { get; set; } = string.Empty;

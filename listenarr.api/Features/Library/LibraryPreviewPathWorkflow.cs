@@ -30,25 +30,18 @@ public sealed class LibraryPreviewPathWorkflow(
             var root = explicitRoot
                 ? request.DestinationRoot
                 : defaultRoot?.Path ?? settings.OutputPath;
-            var audiobook = request.Metadata.ToAudiobook();
-
-            AudiobookSeriesMembershipHelper.ApplyToAudiobook(
-                audiobook,
-                request.Metadata.SeriesMemberships,
-                request.Metadata.Series,
-                request.Metadata.SeriesNumber);
-
-            var namingPattern = !string.IsNullOrWhiteSpace(settings.FolderNamingPattern)
-                ? settings.FolderNamingPattern
-                : settings.FileNamingPattern;
+            // Preview must run the same calculation the add will run, or it describes a
+            // folder the add never creates. This is the identical call
+            // LibraryAddService.ApplyFolderPatternUnderRootAsync makes, on the identical
+            // metadata, so the preview is the stored BasePath.
+            //
             // Preview owns the naming calculation, so preserve the generated relative
             // directory directly instead of re-deriving it from the full path through
             // live filesystem semantics. Read-only preview must not depend on CIFS/NFS/
             // FUSE case-sensitivity probes merely to recover a string it just produced.
-            var relativePath = LibraryPathPlanner.ComputeAudiobookRelativeDirectoryFromPattern(
-                audiobook,
-                namingPattern,
-                fileNamingService);
+            var relativePath = fileNamingService.ApplyNamingPattern(
+                settings.FolderNamingPattern,
+                request.Metadata);
             var fullPath = FileUtils.CombineWithOptionalBase(
                 root ?? string.Empty,
                 relativePath);

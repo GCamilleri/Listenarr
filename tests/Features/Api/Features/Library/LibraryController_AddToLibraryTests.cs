@@ -992,6 +992,85 @@ namespace Listenarr.Tests.Features.Api.Features.Library
         }
 
         [Fact]
+        public async Task AddToLibrary_WithExplicitNonRootDestination_PinsTheBasePath()
+        {
+            // Given a destination the user named rather than one the pattern produced
+            var controller = _provider.GetRequiredService<LibraryController>();
+            var destination = Path.Join(tempRoot, "Brandon Sanderson", "Mistborn 1 - The Final Empire");
+
+            // When the book is added there
+            var result = await controller.AddToLibrary(new LibraryController.AddToLibraryRequest
+            {
+                Metadata = new AudibleBookMetadata
+                {
+                    Title = "The Final Empire",
+                    Author = "Brandon Sanderson",
+                    Asin = "PINNED-ASIN-1"
+                },
+                Monitored = true,
+                DestinationPath = destination
+            });
+
+            // Then the folder is recorded as the user's choice, so organize leaves it alone
+            Assert.IsType<OkObjectResult>(result);
+            var stored = Assert.Single(await _audiobookRepository.GetAllAsync());
+            Assert.Equal(Path.GetFullPath(destination), stored.BasePath);
+            Assert.True(stored.BasePathIsUserPinned);
+        }
+
+        [Fact]
+        public async Task AddToLibrary_WithPatternGeneratedDestination_DoesNotPinTheBasePath()
+        {
+            // Given no destination at all, so the folder pattern owns the path
+            var controller = _provider.GetRequiredService<LibraryController>();
+
+            // When the book is added
+            var result = await controller.AddToLibrary(new LibraryController.AddToLibraryRequest
+            {
+                Metadata = new AudibleBookMetadata
+                {
+                    Title = "Pattern Generated Book",
+                    Author = "Pattern Author",
+                    Asin = "PINNED-ASIN-2"
+                },
+                Monitored = true
+            });
+
+            // Then the pattern keeps ownership of the folder
+            Assert.IsType<OkObjectResult>(result);
+            var stored = Assert.Single(await _audiobookRepository.GetAllAsync());
+            Assert.Equal(Path.GetFullPath(Path.Join(tempRoot, "Pattern Author")), stored.BasePath);
+            Assert.False(stored.BasePathIsUserPinned);
+        }
+
+        [Fact]
+        public async Task AddToLibrary_WithDestinationEqualToConfiguredRoot_DoesNotPinTheBasePath()
+        {
+            // Given a destination that is a configured root, which plan 03 turns into a
+            // pattern path rather than storing the root itself
+            var controller = _provider.GetRequiredService<LibraryController>();
+
+            // When the book is added there
+            var result = await controller.AddToLibrary(new LibraryController.AddToLibraryRequest
+            {
+                Metadata = new AudibleBookMetadata
+                {
+                    Title = "Root Destination Book",
+                    Author = "Root Author",
+                    Asin = "PINNED-ASIN-3"
+                },
+                Monitored = true,
+                DestinationPath = tempRoot
+            });
+
+            // Then the path came from the pattern, so it is not pinned
+            Assert.IsType<OkObjectResult>(result);
+            var stored = Assert.Single(await _audiobookRepository.GetAllAsync());
+            Assert.Equal(Path.GetFullPath(Path.Join(tempRoot, "Root Author")), stored.BasePath);
+            Assert.False(stored.BasePathIsUserPinned);
+        }
+
+        [Fact]
         public async Task AddToLibrary_TwoBooksWithTheSameRootDestination_BothSucceed()
         {
             var controller = _provider.GetRequiredService<LibraryController>();

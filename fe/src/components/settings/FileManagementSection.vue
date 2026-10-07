@@ -142,11 +142,15 @@
           <div v-if="activePatternType === 'folder'" class="pattern-help">
             <p><strong>Available Variables:</strong></p>
             <ul>
-              <li><code>{Author}</code> - Author name</li>
+              <li><code>{Author}</code> - First author name</li>
+              <li><code>{Authors}</code> - All author names, comma separated</li>
               <li><code>{Narrator}</code> - Narrator name(s)</li>
               <li><code>{Series}</code> - Series name</li>
               <li><code>{Title}</code> - Book title</li>
               <li><code>{Subtitle}</code> - Book subtitle</li>
+              <li>
+                <code>{TitleWithSubtitle}</code> - Title and subtitle joined as "Title: Subtitle"
+              </li>
               <li><code>{Edition}</code> - User-defined edition label</li>
               <li><code>{Publisher}</code> - Publisher name</li>
               <li><code>{Language}</code> - Metadata language</li>
@@ -165,11 +169,15 @@
           <div v-else-if="activePatternType === 'file'" class="pattern-help">
             <p><strong>Available Variables:</strong></p>
             <ul>
-              <li><code>{Author}</code> - Author name</li>
+              <li><code>{Author}</code> - First author name</li>
+              <li><code>{Authors}</code> - All author names, comma separated</li>
               <li><code>{Narrator}</code> - Narrator name(s)</li>
               <li><code>{Series}</code> - Series name</li>
               <li><code>{Title}</code> - Book title</li>
               <li><code>{Subtitle}</code> - Book subtitle</li>
+              <li>
+                <code>{TitleWithSubtitle}</code> - Title and subtitle joined as "Title: Subtitle"
+              </li>
               <li><code>{Edition}</code> - User-defined edition label</li>
               <li><code>{Publisher}</code> - Publisher name</li>
               <li><code>{Language}</code> - Metadata language</li>
@@ -223,9 +231,11 @@ const filePatternMultiFile = ref(props.settings.multiFileNamingPattern || '{Titl
 // Sample values for testing patterns
 const sampleVariables = {
   Author: 'Stephen King',
+  Authors: 'Stephen King, Peter Straub',
   Narrator: 'George Guidall',
   Series: 'The Dark Tower',
   Title: 'The Gunslinger',
+  TitleWithSubtitle: 'The Gunslinger: The Dark Tower Begins',
   Subtitle: 'The Dark Tower Begins',
   Edition: 'Revised Edition',
   Publisher: 'Penguin Audio',
@@ -255,12 +265,13 @@ function applyPattern(
   for (const [key, value] of Object.entries(sampleVariables)) {
     if (key === 'DiskNumber' || key === 'ChapterNumber' || key === 'SeriesNumber') {
       // Handle zero-padding for disk, chapter, and series numbers using the sample value
-      const paddedRegex = new RegExp(`\\{${key}:00\\}`, 'g')
+      // Token matching is case-insensitive on the server, so the preview matches it.
+      const paddedRegex = new RegExp(`\\{${key}:00\\}`, 'gi')
       const paddedSample = value.toString().padStart(2, '0')
       result = result.replace(paddedRegex, paddedSample)
-      result = result.replace(new RegExp(`\\{${key}\\}`, 'g'), value)
+      result = result.replace(new RegExp(`\\{${key}\\}`, 'gi'), value)
     } else {
-      const regex = new RegExp(`\\{${key}\\}`, 'g')
+      const regex = new RegExp(`\\{${key}\\}`, 'gi')
       result = result.replace(regex, value)
     }
   }

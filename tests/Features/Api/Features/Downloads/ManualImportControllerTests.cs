@@ -86,7 +86,10 @@ namespace Listenarr.Tests.Features.Api.Features.Downloads
             {
                 Title = "Book",
                 Authors = ["Author"],
-                BasePath = customBasePath
+                BasePath = customBasePath,
+                // What makes this base custom is the user having chosen it, not the shape
+                // of the path. Rename and manual import now read the same flag.
+                BasePathIsUserPinned = true
             };
             var metadata = audiobook.CreateBasicAudioMetadata();
             var item = new ManualImportItemDto
@@ -1597,12 +1600,17 @@ namespace Listenarr.Tests.Features.Api.Features.Downloads
                 .Select(Path.GetFileName)
                 .ToList();
 
+            // This book has no author, and every naming flow now renders {Author} as
+            // "Unknown Author" rather than stripping the token. Manual import used to omit
+            // the variable entirely and drop the folder, which is what made an import land
+            // somewhere organize would immediately move it away from.
+            var authorFolder = Path.Join(basePath, "Unknown Author");
             Assert.Contains("Ordered Book-01.mp3", diskFiles);
             Assert.Contains("Ordered Book-02.mp3", diskFiles);
             Assert.Contains("Ordered Book-10.mp3", diskFiles);
-            Assert.Equal("one", await File.ReadAllTextAsync(Path.Join(basePath, "Ordered Book-01.mp3")));
-            Assert.Equal("two", await File.ReadAllTextAsync(Path.Join(basePath, "Ordered Book-02.mp3")));
-            Assert.Equal("ten", await File.ReadAllTextAsync(Path.Join(basePath, "Ordered Book-10.mp3")));
+            Assert.Equal("one", await File.ReadAllTextAsync(Path.Join(authorFolder, "Ordered Book-01.mp3")));
+            Assert.Equal("two", await File.ReadAllTextAsync(Path.Join(authorFolder, "Ordered Book-02.mp3")));
+            Assert.Equal("ten", await File.ReadAllTextAsync(Path.Join(authorFolder, "Ordered Book-10.mp3")));
         }
 
         [Fact]

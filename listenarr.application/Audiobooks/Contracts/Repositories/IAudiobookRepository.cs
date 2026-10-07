@@ -72,7 +72,8 @@ namespace Listenarr.Application.Audiobooks.Contracts.Repositories
             FileSystemPathSemantics sourceSemantics,
             FileSystemPathSemantics targetSemantics,
             CancellationToken ct = default,
-            FileSystemCaseSensitivityMode targetCaseSensitivityMode = FileSystemCaseSensitivityMode.Auto);
+            FileSystemCaseSensitivityMode targetCaseSensitivityMode = FileSystemCaseSensitivityMode.Auto,
+            bool? basePathIsUserPinned = null);
         Task<bool> RewriteMovedPathReferencesAsync(
             int audiobookId,
             string? sourceBasePath,

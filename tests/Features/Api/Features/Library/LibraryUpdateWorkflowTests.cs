@@ -74,7 +74,8 @@ public sealed class LibraryUpdateWorkflowTests : BaseTests
                 id,
                 nativeTarget,
                 foreignSource,
-                It.IsAny<CancellationToken>()))
+                It.IsAny<CancellationToken>(),
+                true))
             .ReturnsAsync(new AudiobookDestinationRewriteResult(
                 id,
                 nativeTarget,
@@ -103,7 +104,8 @@ public sealed class LibraryUpdateWorkflowTests : BaseTests
             id,
             nativeTarget,
             foreignSource,
-            It.IsAny<CancellationToken>()), Times.Once);
+            It.IsAny<CancellationToken>(),
+            true), Times.Once);
     }
 
     [Fact]
@@ -144,7 +146,8 @@ public sealed class LibraryUpdateWorkflowTests : BaseTests
                 id,
                 target,
                 source,
-                It.IsAny<CancellationToken>()))
+                It.IsAny<CancellationToken>(),
+                true))
             .ReturnsAsync(new AudiobookDestinationRewriteResult(id, target, source));
 
         var services = new ServiceCollection();
@@ -203,7 +206,8 @@ public sealed class LibraryUpdateWorkflowTests : BaseTests
                 id,
                 target,
                 source,
-                It.IsAny<CancellationToken>()))
+                It.IsAny<CancellationToken>(),
+                true))
             .Returns(() =>
             {
                 cancellation.Cancel();
@@ -278,7 +282,8 @@ public sealed class LibraryUpdateWorkflowTests : BaseTests
                 id,
                 target,
                 source,
-                It.IsAny<CancellationToken>()))
+                It.IsAny<CancellationToken>(),
+                true))
             .ReturnsAsync(new AudiobookDestinationRewriteResult(id, target, source));
 
         var services = new ServiceCollection();
@@ -448,7 +453,8 @@ public sealed class LibraryUpdateWorkflowTests : BaseTests
                 id,
                 target,
                 source,
-                It.IsAny<CancellationToken>()))
+                It.IsAny<CancellationToken>(),
+                true))
             .ReturnsAsync(new AudiobookDestinationRewriteResult(id, target, source));
         var rootFolderService = new Mock<IRootFolderService>();
         rootFolderService.Setup(service => service.GetAllAsync()).ReturnsAsync(
@@ -483,6 +489,7 @@ public sealed class LibraryUpdateWorkflowTests : BaseTests
             id,
             target,
             source,
-            It.IsAny<CancellationToken>()), Times.Once);
+            It.IsAny<CancellationToken>(),
+            true), Times.Once);
     }
 }

@@ -102,7 +102,9 @@ namespace Listenarr.Api.Features.Library
                             id,
                             request.BasePath,
                             existingAudiobook.BasePath,
-                            cancellationToken);
+                            cancellationToken,
+                            // An edited BasePath is the user naming the folder.
+                            basePathIsUserPinned: true);
                         basePathRewritten = true;
                     }
                     catch (ListenarrApplicationException ex)

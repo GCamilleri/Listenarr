@@ -134,6 +134,7 @@ namespace Listenarr.Application.Audiobooks.Catalog
                     ImageUrl = a.ImageUrl,
                     Monitored = a.Monitored,
                     BasePath = a.BasePath,
+                    BasePathIsUserPinned = a.BasePathIsUserPinned,
                     FilePath = a.FilePath,
                     FileSize = a.FileSize,
                     FileCount = fileCountById.TryGetValue(a.Id, out var trueCount) ? trueCount : 0,

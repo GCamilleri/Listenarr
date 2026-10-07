@@ -36,7 +36,10 @@ public sealed class LibraryRenameWorkflow(
         }
 
         return new OkObjectResult(
-            await renameService.PreviewRenameAsync(request.AudiobookIds, cancellationToken));
+            await renameService.PreviewRenameAsync(
+                request.AudiobookIds,
+                request.IncludePinned,
+                cancellationToken));
     }
 
     public async Task<IActionResult> ExecuteAsync(
@@ -73,14 +76,18 @@ public sealed class LibraryRenameWorkflow(
 
     public async Task<IActionResult> PreviewSingleAsync(
         int id,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool includePinned = false)
     {
         if (renameService == null)
         {
             return Unavailable();
         }
 
-        var preview = (await renameService.PreviewRenameAsync([id], cancellationToken))
+        var preview = (await renameService.PreviewRenameAsync(
+                [id],
+                includePinned,
+                cancellationToken))
             .FirstOrDefault();
         return preview == null
             ? new NotFoundObjectResult(new { message = "Audiobook not found" })

@@ -22,6 +22,12 @@ namespace Listenarr.Application.Audiobooks.Renaming
     public class BulkRenameRequest
     {
         public int[] AudiobookIds { get; set; } = Array.Empty<int>();
+
+        /// <summary>
+        /// Re-plan books whose BasePath the user pinned. Off by default: organize must not
+        /// relocate a folder the user chose just because it sits inside a root.
+        /// </summary>
+        public bool IncludePinned { get; set; }
     }
 
     public class RenameOperation

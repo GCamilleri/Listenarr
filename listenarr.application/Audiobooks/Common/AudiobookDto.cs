@@ -55,6 +55,7 @@ namespace Listenarr.Application.Audiobooks.Common
         public string? FilePath { get; set; }
         public long? FileSize { get; set; }
         public string? BasePath { get; set; }
+        public bool BasePathIsUserPinned { get; set; }
         public AudiobookFileDto[]? Files { get; set; }
         public string? ImageUrl { get; set; }
         public string? Quality { get; set; }

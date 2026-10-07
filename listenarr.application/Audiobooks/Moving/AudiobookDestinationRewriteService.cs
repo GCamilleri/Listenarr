@@ -52,7 +52,8 @@ public sealed partial class AudiobookDestinationRewriteService : IAudiobookDesti
         int audiobookId,
         string destinationPath,
         string? expectedSourcePath,
-        CancellationToken cancellationToken = default) =>
+        CancellationToken cancellationToken = default,
+        bool? basePathIsUserPinned = null) =>
         _mutationCoordinator.ExecuteExclusiveAsync(
             lockedCancellationToken => _audiobookOperationCoordinator.ExecuteExclusiveAsync(
                 audiobookId,
@@ -60,6 +61,7 @@ public sealed partial class AudiobookDestinationRewriteService : IAudiobookDesti
                     audiobookId,
                     destinationPath,
                     expectedSourcePath,
+                    basePathIsUserPinned,
                     token),
                 lockedCancellationToken),
             cancellationToken);
@@ -68,6 +70,7 @@ public sealed partial class AudiobookDestinationRewriteService : IAudiobookDesti
         int audiobookId,
         string destinationPath,
         string? expectedSourcePath,
+        bool? basePathIsUserPinned,
         CancellationToken cancellationToken)
     {
         var destination = await ResolveDestinationAsync(destinationPath, cancellationToken);
@@ -128,7 +131,8 @@ public sealed partial class AudiobookDestinationRewriteService : IAudiobookDesti
             sourceSemantics,
             destination.TargetBoundary.Semantics,
             cancellationToken,
-            destination.TargetBoundary.CaseSensitivityMode);
+            destination.TargetBoundary.CaseSensitivityMode,
+            basePathIsUserPinned);
         if (!rewritten)
         {
             throw new ApplicationNotFoundException("audiobook_not_found", "Audiobook not found");
